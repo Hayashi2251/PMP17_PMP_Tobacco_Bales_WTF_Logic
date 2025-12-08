@@ -1,0 +1,57 @@
+{
+  "id": "7557767a-a051-4a25-9fb7-d8a1c338d21c",
+  "name": "PMP Tobacco Bales Whse TF (Logic)",
+  "publisher": "PT SME Solution",
+  "version": "1.0.2600.0",
+  "brief": "",
+  "description": "",
+  "privacyStatement": "",
+  "EULA": "",
+  "help": "",
+  "url": "",
+  "logo": "",
+  "dependencies": [
+    {
+      "id": "999f2a3b-5365-4a0d-b450-9b57036cef68",
+      "name": "PMP Application Data",
+      "publisher": "PT SME Solution",
+      "version": "1.0.2500.0"
+    },
+    {
+      "id": "7860c619-ac4b-4c4e-bec6-c84fa984dbdb",
+      "name": "PMP Application (Logic)",
+      "publisher": "PT SME Solution",
+      "version": "1.0.2500.0"
+    },
+    {
+      "id": "2e6e81e7-bdff-4ca2-b0a1-052f569822b9",
+      "name": "SMES Application Data",
+      "publisher": "PT SME Solution",
+      "version": "1.0.2603.0"
+    },
+    {
+      "id": "a838d6a1-ed69-4477-8c05-a742f63dc8c6",
+      "name": "SMES ID Localization (Logic)",
+      "publisher": "PT SME Solution",
+      "version": "1.0.2603.0"
+    }
+  ],
+  "screenshots": [],
+  "platform": "1.0.0.0",
+  "application": "26.0.0.0",
+  "idRanges": [
+    {
+      "from": 60000,
+      "to": 60999
+    }
+  ],
+  "resourceExposurePolicy": {
+    "allowDebugging": true,
+    "allowDownloadingSource": true,
+    "includeSourceInSymbolFile": true
+  },
+  "runtime": "15.0",
+  "features": [
+    "NoImplicitWith"
+  ]
+}
