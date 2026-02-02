@@ -49,7 +49,7 @@ page 60416 "PMP17 Tobacco Bales Transfer"
                         ClearBaleNoCode();
 
                         BinRec.Reset();
-                        BinRec.SetRange("Location Code", UserSetupRec."PMP17 Working Location Code");
+                        BinRec.SetRange("Location Code", UserSetupRec."SME073 Working Location");
                         if Page.RunModal(Page::"Bin List", BinRec) = Action::LookupOK then begin
                             TransferToBinCode := BinRec.Code;
                         end;
@@ -62,12 +62,12 @@ page 60416 "PMP17 Tobacco Bales Transfer"
                         ClearBaleNoCode();
 
                         BinRec.Reset();
-                        BinRec.SetRange("Location Code", UserSetupRec."PMP17 Working Location Code");
+                        BinRec.SetRange("Location Code", UserSetupRec."SME073 Working Location");
                         BinRec.SetRange(Code, TransferToBinCode);
                         if BinRec.FindFirst() then begin
                             TransferToBinCode := BinRec.Code;
                         end else
-                            Error('The scanned bin code (%1) is not available in current working location code of %2.', TransferToBinCode, UserSetupRec."PMP17 Working Location Code");
+                            Error('The scanned bin code (%1) is not available in current working location code of %2.', TransferToBinCode, UserSetupRec."SME073 Working Location");
                     end;
                 }
                 field(BaleNoText; BaleNoText)
@@ -81,27 +81,31 @@ page 60416 "PMP17 Tobacco Bales Transfer"
                     var
                         PkgNoInfoRec: Record "Package No. Information";
                     begin
+                        if TransferToBinCode = '' then begin
+                            Error('Error: Tobacco Bales Transfer cannot be proceed any further before specifying Transfer to Bin Code');
+                        end;
+
                         ResetTextCaptionValues();
                         ResetItemNVariantFields();
 
                         PkgNoInfoRec.Reset();
+                        PkgNoInfoRec.SetRange("Location Filter", UserSetupRec."SME073 Working Location");
                         PkgNoInfoRec.SetAutoCalcFields(Inventory);
                         PkgNoInfoRec.SetFilter(Inventory, '> 0');
-                        PkgNoInfoRec.SetRange("Location Filter", UserSetupRec."PMP17 Working Location Code");
                         if Page.RunModal(Page::"Package No. Information List", PkgNoInfoRec) = Action::LookupOK then begin
                             BaleNoText := PkgNoInfoRec."Package No.";
                             BaleNoCode := PkgNoInfoRec."Package No.";
                             ItemNoCode := PkgNoInfoRec."Item No.";
                             VariantNoCode := PkgNoInfoRec."Variant Code";
                             PackageNoInfoRec := PkgNoInfoRec;
+                            if TobaccoBalesWhseTFMgmt.PostTobaccoBalesTransferItemReclass(ItemJnlLine, PackageNoInfoRec, UserSetupRec, TransferToBinCode) then begin
+                                Message('The Reclassification Journal is successfully posted.');
+                                NotifyUserSuccessPosting()
+                            end else
+                                NotifyUserFailedPosting();
                         end;
 
                         // POST FUNCTION
-                        if TobaccoBalesWhseTFMgmt.PostTobaccoBalesTransferItemReclass(ItemJnlLine, PackageNoInfoRec, UserSetupRec, TransferToBinCode) then begin
-                            Message('The Reclassification Journal is successfully posted.');
-                            NotifyUserSuccessPosting()
-                        end else
-                            NotifyUserFailedPosting();
                     end;
 
                     trigger OnValidate()
@@ -110,6 +114,10 @@ page 60416 "PMP17 Tobacco Bales Transfer"
                         SplittedData: List of [Text];
                         Delimiter: Text;
                     begin
+                        if TransferToBinCode = '' then begin
+                            Error('Error: Tobacco Bales Transfer cannot be proceed any further before specifying Transfer to Bin Code');
+                        end;
+
                         ResetTextCaptionValues();
                         ResetItemNVariantFields();
                         Delimiter := ExtCompanySetup."PMP14 Barcode Separator";
@@ -128,26 +136,26 @@ page 60416 "PMP17 Tobacco Bales Transfer"
                             BaleNoCode := BaleNoText;
 
                         PkgNoInfoRec.Reset();
-                        PkgNoInfoRec.SetAutoCalcFields(Inventory);
+                        PkgNoInfoRec.SetRange("Location Filter", UserSetupRec."SME073 Working Location");
+                        PkgNoInfoRec.SetAutoCalcFields(Inventory, "PMP04 Bin Code", "PMP04 Lot No.");
                         PkgNoInfoRec.SetRange("Package No.", BaleNoCode);
-                        PkgNoInfoRec.SetRange("Location Filter", UserSetupRec."PMP17 Working Location Code");
                         PkgNoInfoRec.SetFilter(Inventory, '>0');
                         if PkgNoInfoRec.FindFirst() then begin
-                            // Run post item reclassification here
                             BaleNoText := PkgNoInfoRec."Package No.";
                             BaleNoCode := PkgNoInfoRec."Package No.";
                             ItemNoCode := PkgNoInfoRec."Item No.";
                             VariantNoCode := PkgNoInfoRec."Variant Code";
                             PackageNoInfoRec := PkgNoInfoRec;
-
-                            // POST FUNCTION
                             if TobaccoBalesWhseTFMgmt.PostTobaccoBalesTransferItemReclass(ItemJnlLine, PackageNoInfoRec, UserSetupRec, TransferToBinCode) then begin
+                                Clear(TransferToBinCode);
+                                ClearBaleNoCode();
                                 Message('The Reclassification Journal is successfully posted.');
                                 NotifyUserSuccessPosting()
                             end else
                                 NotifyUserFailedPosting();
                         end else
                             exit; // Silent exit, no messages
+                                  // end;
                     end;
                 }
                 field(ItemNoCode; ItemNoCode)
@@ -193,8 +201,8 @@ page 60416 "PMP17 Tobacco Bales Transfer"
                 trigger OnAction()
                 begin
                     ChangeLocationCodeRep.SetUserID(UserSetupRec."User ID");
-                    if UserSetupRec."PMP17 Working Location Code" <> '' then begin
-                        ChangeLocationCodeRep.SetLocationCode(UserSetupRec."PMP17 Working Location Code");
+                    if UserSetupRec."SME073 Working Location" <> '' then begin
+                        ChangeLocationCodeRep.SetLocationCode(UserSetupRec."SME073 Working Location");
                     end;
                     ChangeLocationCodeRep.Run();
 

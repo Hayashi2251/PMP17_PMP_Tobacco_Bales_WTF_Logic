@@ -17,6 +17,9 @@ page 60426 "PMP17 Tobacco Regrading"
     Caption = 'Tobacco Regrading';
     PageType = NavigatePage;
     UsageCategory = Tasks;
+    SourceTable = "PMP17 Bale No Regrading Line";
+    SourceTableTemporary = true;
+    SourceTableView = sorting("Entry No.");
 
     #region LAYOUT
     layout
@@ -73,7 +76,7 @@ page 60426 "PMP17 Tobacco Regrading"
                 field(ItemDescriptionText; ItemDescriptionText)
                 {
                     ApplicationArea = All;
-                    Caption = 'Item No.';
+                    Caption = 'Item Description';
                     ToolTip = '';
                     Editable = false;
                 }
@@ -105,6 +108,7 @@ page 60426 "PMP17 Tobacco Regrading"
 
                         ItemVariantRec.Reset();
                         ItemVariantRec.SetRange("Item No.", ItemNoCode);
+                        ItemVariantRec.SetRange(Code, NewTobaccoStandardCode);
                         if ItemVariantRec.FindFirst() then begin
                             NewTobaccoStandardCode := ItemVariantRec.Code;
                         end;
@@ -144,8 +148,10 @@ page 60426 "PMP17 Tobacco Regrading"
                     begin
                         ClearBaleNoCode();
                         PkgNoInfoRec.Reset();
+                        PkgNoInfoRec.SetRange("Location Filter", UserSetupRec."SME073 Working Location");
                         PkgNoInfoRec.SetAutoCalcFields(Inventory);
                         PkgNoInfoRec.SetRange("Item No.", ItemNoCode);
+                        PkgNoInfoRec.SetFilter("Variant Code", '<> %1', NewTobaccoStandardCode);
                         PkgNoInfoRec.SetFilter(Inventory, '> 0');
                         PkgNoInfoListPage.SetTableView(PkgNoInfoRec);
                         PkgNoInfoListPage.LookupMode(true);
@@ -159,13 +165,16 @@ page 60426 "PMP17 Tobacco Regrading"
                                 repeat
                                     BaleNoText := PkgNoInfoRec."Package No.";
                                     BaleNoCode := PkgNoInfoRec."Package No.";
-                                    PackageNoInfoRec := PkgNoInfoRec;
+                                    // PackageNoInfoRec := PkgNoInfoRec;
                                     // Add the Package No Info to the Tobacco Bales Resequence Listpart
-                                    AddSummaryBaleListPartofPackageNoInfo(PkgNoInfoRec);
-                                    CurrPage.PkgNo__List.Page.InsertRecord(PackageNoInfoRec, UserSetupRec."PMP17 Working Location Code", PackageNoInfoRec."PMP04 Bin Code");
+                                    AddRecordPkgNo__List(Rec, PkgNoInfoRec);
+                                    AddSummaryBaleListPartofPackageNoInfo(Rec);
+                                    CurrPage.Update(false);
+                                // CurrPage.PkgNo__List.Page.InsertRecord(PackageNoInfoRec, UserSetupRec."SME073 Working Location", PackageNoInfoRec."PMP04 Bin Code");
                                 until PkgNoInfoRec.Next() = 0;
                         end;
                     end;
+                    #region REMOVED ONLOOKUP V1
                     // trigger OnLookup(var Text: Text): Boolean
                     // var
                     //     PkgNoInfoRec: Record "Package No. Information";
@@ -174,16 +183,17 @@ page 60426 "PMP17 Tobacco Regrading"
                     //     PkgNoInfoRec.SetAutoCalcFields(Inventory);
                     //     PkgNoInfoRec.SetRange("Item No.", ItemNoCode);
                     //     PkgNoInfoRec.SetFilter(Inventory, '> 0');
-                    //     PkgNoInfoRec.SetRange("Location Filter", UserSetupRec."PMP17 Working Location Code");
+                    //     PkgNoInfoRec.SetRange("Location Filter", UserSetupRec."SME073 Working Location");
                     //     if Page.RunModal(Page::"Package No. Information List", PkgNoInfoRec) = Action::LookupOK then begin
                     //         BaleNoText := PkgNoInfoRec."Package No.";
                     //         BaleNoCode := PkgNoInfoRec."Package No.";
                     //         PackageNoInfoRec := PkgNoInfoRec;
                     //         // Add the Package No Info to the Tobacco Bales Resequence Listpart
                     //         AddSummaryBaleListPartofPackageNoInfo(PkgNoInfoRec);
-                    //         CurrPage.PkgNo__List.Page.InsertRecord(PackageNoInfoRec, UserSetupRec."PMP17 Working Location Code", PackageNoInfoRec."PMP04 Bin Code");
+                    //         CurrPage.PkgNo__List.Page.InsertRecord(PackageNoInfoRec, UserSetupRec."SME073 Working Location", PackageNoInfoRec."PMP04 Bin Code");
                     //     end;
-                    // end;
+                    // end;                    
+                    #endregion REMOVED ONLOOKUP V1
 
                     trigger OnValidate()
                     var
@@ -207,42 +217,166 @@ page 60426 "PMP17 Tobacco Regrading"
                             BaleNoCode := BaleNoText;
 
                         PkgNoInfoRec.Reset();
+                        PkgNoInfoRec.SetRange("Location Filter", UserSetupRec."SME073 Working Location");
                         PkgNoInfoRec.SetAutoCalcFields(Inventory);
                         PkgNoInfoRec.SetRange("Item No.", ItemNoCode);
                         PkgNoInfoRec.SetRange("Package No.", BaleNoCode);
                         PkgNoInfoRec.SetFilter(Inventory, '> 0');
-                        PkgNoInfoRec.SetRange("Location Filter", UserSetupRec."PMP17 Working Location Code");
-                        if Page.RunModal(Page::"Package No. Information List", PkgNoInfoRec) = Action::LookupOK then begin
+                        if PkgNoInfoRec.FindFirst() then begin
                             BaleNoText := PkgNoInfoRec."Package No.";
                             BaleNoCode := PkgNoInfoRec."Package No.";
                             PackageNoInfoRec := PkgNoInfoRec;
                             // Add the Package No Info to the Tobacco Bales Resequence Listpart
-                            AddSummaryBaleListPartofPackageNoInfo(PkgNoInfoRec);
-                            CurrPage.PkgNo__List.Page.InsertRecord(PackageNoInfoRec, UserSetupRec."PMP17 Working Location Code", PackageNoInfoRec."PMP04 Bin Code");
+                            AddRecordPkgNo__List(Rec, PkgNoInfoRec);
+                            AddSummaryBaleListPartofPackageNoInfo(Rec);
+                            CurrPage.Update(false);
+                            // CurrPage.PkgNo__List.Page.InsertRecord(PackageNoInfoRec, UserSetupRec."SME073 Working Location", PackageNoInfoRec."PMP04 Bin Code");
                         end else
                             exit; // Silent exit, no messages
                     end;
                 }
+                // field(TotalBalesPositionInt; TotalBalesPositionInt)
                 field(TotalBalesPositionInt; TotalBalesPositionInt)
                 {
                     ApplicationArea = All;
-                    ShowCaption = false;
+                    // ShowCaption = false;
+                    Caption = 'Total Bales';
                     Editable = false;
                     // StyleExpr = 'strong';
                 } // TOTAL BALE POSITION
+                // field(TotalBalesQtyDec; TotalBalesQtyDec)
                 field(TotalBalesQtyDec; TotalBalesQtyDec)
                 {
                     ApplicationArea = All;
-                    ShowCaption = false;
+                    Caption = 'Total Quantity';
+                    // ShowCaption = false;
                     Editable = false;
                     // StyleExpr = 'strong';
                 } // TOTAL BALE QUANTITY IN DECIMAL
 
-                part(PkgNo__List; "PMP17 Tbco. Bales Reseq. Sub.")
+                // part(PkgNo__List; "PMP17 Tbco. Bales Reseq. Sub.")
+                // {
+                //     ApplicationArea = All;
+                //     Caption = 'Tobacco Regrading Lines';
+                //     UpdatePropagation = Both;
+                // }
+                repeater(PkgNo__List)
                 {
-                    ApplicationArea = All;
-                    Caption = 'Tobacco Regrading Lines';
-                    UpdatePropagation = Both;
+                    Caption = 'Detail';
+                    Editable = false;
+                    field("Package No."; Rec."Package No.")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Package No. / Bale No.';
+                        ToolTip = 'Specifies the customs declaration number.';
+                        Editable = false;
+                    }
+                    field("Item No."; Rec."Item No.")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Item No.';
+                        ToolTip = 'Specifies the number of the involved entry or record, according to the specified number series.';
+                        Editable = false;
+                    }
+                    field("Variant Code"; Rec."Variant Code")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Variant Code';
+                        ToolTip = 'Specifies the variant of the item on the line.';
+                        Editable = false;
+                    }
+                    field(Description; Rec."Description")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Description';
+                        ToolTip = 'Specifies the description associated with this line.';
+                        Editable = false;
+                    }
+                    field("PMP04 Sub Merk 1"; Rec."Sub Merk 1")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Sub Merk 1';
+                        ToolTip = 'Specifies the submerk 1 associated with this line';
+                        Editable = false;
+                    }
+                    field("PMP04 Sub Merk 2"; Rec."Sub Merk 2")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Sub Merk 2';
+                        ToolTip = 'Specifies the submerk 2 associated with this line';
+                        Editable = false;
+                    }
+                    field("PMP04 Sub Merk 3"; Rec."Sub Merk 3")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Sub Merk 3';
+                        ToolTip = 'Specifies the submerk 3 associated with this line';
+                        Editable = false;
+                    }
+                    field("PMP04 Sub Merk 4"; Rec."Sub Merk 4")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Sub Merk 4';
+                        ToolTip = 'Specifies the submerk 4 associated with this line';
+                        Editable = false;
+                    }
+                    field("PMP04 Sub Merk 5"; Rec."Sub Merk 5")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Sub Merk 5';
+                        ToolTip = 'Specifies the submerk 5 associated with this line';
+                        Editable = false;
+                    }
+                    field("PMP04 Lot No."; Rec."Lot No.")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Lot No.';
+                        ToolTip = 'Specifies the lot no. associated with this line';
+                        Editable = false;
+                    }
+                    field("PMP07 Bale Position"; Rec."Old Bale Position")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Bale Position';
+                        ToolTip = 'Specifies the new bale position of the scanned bale number.';
+                        Editable = false;
+                    }
+                    field(CurrentLocationCode; UserSetupRec."SME073 Working Location")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Current Location Code';
+                        ToolTip = 'Specifies the Current Location Code associated with this line';
+                        Editable = false;
+                    }
+                    field("PMP04 Bin Code"; Rec."Bin Code")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Current Bin Code';
+                        ToolTip = 'Specifies the Current Bin Code associated with this line';
+                        Editable = false;
+                    }
+                    // LA TEMPORAIRE
+                    field(CurrentBinCode; Rec."Curr. Bin Code")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Current Bin Code';
+                        ToolTip = 'Specifies the Current Bin Code associated with this line';
+                        Editable = false;
+                    }
+                    field(Inventory; Rec.Inventory)
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Inventory';
+                        ToolTip = 'Specifies the quantity on inventory with this line.';
+                        Editable = false;
+                    }
+                    field(BaseUoMCode; BaseUoMCode)
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Base Unit of Measure';
+                        ToolTip = 'Specifies the value of the Base Unit of Measure field.', Comment = '%';
+                        Editable = false;
+                    }
                 }
             }
         }
@@ -305,13 +439,14 @@ page 60426 "PMP17 Tobacco Regrading"
                 trigger OnAction()
                 begin
                     ChangeLocationCodeRep.SetUserID(UserSetupRec."User ID");
-                    if UserSetupRec."PMP17 Working Location Code" <> '' then begin
-                        ChangeLocationCodeRep.SetLocationCode(UserSetupRec."PMP17 Working Location Code");
+                    if UserSetupRec."SME073 Working Location" <> '' then begin
+                        ChangeLocationCodeRep.SetLocationCode(UserSetupRec."SME073 Working Location");
                     end;
                     ChangeLocationCodeRep.Run();
 
                     UserSetupRec.Get(UserId);
-                    CurrPage.PkgNo__List.Page.DeleteAllRecord();
+                    Rec.DeleteAll();
+                    // CurrPage.PkgNo__List.Page.DeleteAllRecord();
                     ResetControls();
                 end;
             }
@@ -330,7 +465,8 @@ page 60426 "PMP17 Tobacco Regrading"
                     if Confirm('Do you want to rescan again? If Yes, then all the data in the table will be deleted.', false) then begin
                         ClearQtyResume();
                         ClearNewBalePosition();
-                        CurrPage.PkgNo__List.Page.DeleteAllRecord();
+                        Rec.DeleteAll();
+                        // CurrPage.PkgNo__List.Page.DeleteAllRecord();
                         AssemblyHeaderRec.Reset();
                     end;
                     CurrPage.Update();
@@ -350,22 +486,33 @@ page 60426 "PMP17 Tobacco Regrading"
                     PkgNoInfoRec: Record "Package No. Information";
                 begin
                     // CurrPage.PkgNo__List.Page.GetPackageNoInfo_TobaccoBalesResequenceSubform(LinesPackageNoInfoRec);
-                    if (CurrPage.PkgNo__List.Page.CountAllExistingRec() > 0) then
+                    // if (CurrPage.PkgNo__List.Page.CountAllExistingRec() > 0) then
+                    Rec.Reset();
+                    if Rec.FindSet() then
                         repeat
-                            LinesPackageNoInfoRec.DeleteAll();
-                            CurrPage.PkgNo__List.Page.GetFirstRec(LinesPackageNoInfoRec);
-                            LinesPackageNoInfoRec.CalcFields(Inventory);
-                            LinesPackageNoInfoRec.CalcFields("PMP04 Bin Code");
-                            LinesPackageNoInfoRec.CalcFields("PMP04 Lot No.");
-                            TobaccoBalesWhseTFMgmt.PostTobaccoBalesRegrading(AssemblyHeaderRec, LinesPackageNoInfoRec, UserSetupRec, ItemNoCode, NewTobaccoStandardCode);
-                            CurrPage.PkgNo__List.Page.DeleteFirstRec();
-                        until CurrPage.PkgNo__List.Page.CountAllExistingRec() = 0;
+                            PkgNoInfoRec.Reset();
+                            Rec.CalcFields("Description", "Sub Merk 1", "Sub Merk 2", "Sub Merk 3", "Sub Merk 4", "Sub Merk 5", "Old Bale Position");
 
-                    CurrPage.Update();
+                            PkgNoInfoRec.SetRange("Item No.", Rec."Item No.");
+                            PkgNoInfoRec.SetRange("Variant Code", Rec."Variant Code");
+                            PkgNoInfoRec.SetRange("Package No.", Rec."Package No.");
+                            if PkgNoInfoRec.FindFirst() then begin
+                                PkgNoInfoRec.CalcFields(Inventory);
+                                PkgNoInfoRec.CalcFields("PMP04 Bin Code");
+                                PkgNoInfoRec.CalcFields("PMP04 Lot No.");
+                                TobaccoBalesWhseTFMgmt.PostTobaccoBalesRegrading(AssemblyHeaderRec, PkgNoInfoRec, UserSetupRec, ItemNoCode, NewTobaccoStandardCode);
+                            end;
+
+                        // CurrPage.PkgNo__List.Page.GetFirstRec(Rec);
+                        // CurrPage.PkgNo__List.Page.DeleteFirstRec();
+                        until Rec.Next() = 0;
+
+                    CurrPage.Update(false);
                     Clear(TobaccoBalesWhseTFMgmt);
                     AssemblyHeaderRec.Reset();
                     PackageNoInfoRec.Reset();
                     LinesPackageNoInfoRec.DeleteAll();
+                    Rec.DeleteAll();
                     // Clear(ItemNoCode);
                     ClearSelectedItemToRegrading();
                     ClearBaleNoCode();
@@ -377,6 +524,25 @@ page 60426 "PMP17 Tobacco Regrading"
         }
     }
     #endregion ACTIONS
+
+    trigger OnInit()
+    begin
+        ExtCompanySetup.Get();
+        LinesPackageNoInfoRec.DeleteAll();
+        UserSetupRec.Get(UserId);
+        CurrentStep := 1;
+        MaxNavigatePage := 2;
+
+        ResetControls();
+    end;
+
+    trigger OnAfterGetCurrRecord()
+    var
+        ItemRec: Record Item;
+    begin
+        ItemRec.Get(Rec."Item No.");
+        BaseUoMCode := ItemRec."Base Unit of Measure";
+    end;
 
     var
         ChangeLocationCodeRep: Report "PMP17 Change Working Loc. Code";
@@ -393,20 +559,10 @@ page 60426 "PMP17 Tobacco Regrading"
         ItemNoCode: Code[20];
         NewTobaccoStandardCode: Code[10];
         BaleNoCode: Code[50];
+        BaseUoMCode: Code[10];
         TobaccoBalesTF_TextCaption: Text;
         MaxNavigatePage, NewBalePosition, TotalBalesPositionInt : Integer;
         TotalBalesQtyDec: Decimal;
-
-    trigger OnInit()
-    begin
-        ExtCompanySetup.Get();
-        LinesPackageNoInfoRec.DeleteAll();
-        UserSetupRec.Get(UserId);
-        CurrentStep := 1;
-        MaxNavigatePage := 2;
-
-        ResetControls();
-    end;
 
     local procedure ResetControls()
     begin
@@ -432,7 +588,7 @@ page 60426 "PMP17 Tobacco Regrading"
     begin
         Clear(NewBalePosition);
         ClearQtyResume();
-        CurrPage.PkgNo__List.Page.SetNewBalePosition(1);
+        // CurrPage.PkgNo__List.Page.SetNewBalePosition(1);
     end;
 
     local procedure ClearQtyResume()
@@ -447,10 +603,75 @@ page 60426 "PMP17 Tobacco Regrading"
         Clear(NewTobaccoStandardCode);
     end;
 
-    local procedure AddSummaryBaleListPartofPackageNoInfo(PkgNoInfoRec: Record "Package No. Information")
+    local procedure AddSummaryBaleListPartofPackageNoInfo(var Rec: Record "PMP17 Bale No Regrading Line" temporary)
     begin
-        PkgNoInfoRec.CalcFields(Inventory);
-        TotalBalesPositionInt += 1;
-        TotalBalesQtyDec += PkgNoInfoRec.Inventory;
+        ClearQtyResume();
+        if Rec.FindSet() then
+            repeat
+                TotalBalesPositionInt += 1;
+                TotalBalesQtyDec += Rec.Inventory;
+            until Rec.Next() = 0;
     end;
+
+    procedure AddRecordPkgNo__List(var Rec: Record "PMP17 Bale No Regrading Line" temporary; PkgNoInfoRec: Record "Package No. Information")
+    var
+        // LastBalePosInt: Integer;
+        ItemRec: Record Item;
+    begin
+        Clear(NewBalePosition);
+
+        PkgNoInfoRec.CalcFields(Inventory, "PMP04 Bin Code", "PMP04 Lot No.");
+        ItemRec.Reset();
+        Rec.Reset();
+        Rec.SetRange("Package No.", PkgNoInfoRec."Package No.");
+        Rec.SetRange("Item No.", PkgNoInfoRec."Item No.");
+        Rec.SetRange("Variant Code", PkgNoInfoRec."Variant Code");
+        if Rec.FindFirst() then
+            Rec.Delete();
+        // else
+        // LastBalePosInt += 1;
+
+        Rec.Reset(); // penting
+
+        Rec.Init();
+        Rec."Entry No." := GetLastEntryNo() + 1;
+        Rec."Package No." := PkgNoInfoRec."Package No.";
+        Rec."Item No." := PkgNoInfoRec."Item No.";
+        Rec."Variant Code" := PkgNoInfoRec."Variant Code";
+        Rec.CalcFields("Description", "Sub Merk 1", "Sub Merk 2", "Sub Merk 3", "Sub Merk 4", "Sub Merk 5", "Old Bale Position");
+        Rec."Lot No." := PkgNoInfoRec."PMP04 Lot No.";
+        Rec."Curr. Location Code" := UserSetupRec."SME073 Working Location";
+        Rec."Curr. Bin Code" := PkgNoInfoRec."PMP04 Bin Code";
+        Rec.Inventory := PkgNoInfoRec.Inventory;
+        ItemRec.Get(Rec."Item No.");
+        Rec."Base Unit of Measure" := ItemRec."Base Unit of Measure";
+        Rec.Insert();
+
+        Rec.Reset();
+        // Clear(LastBalePosInt);
+        Rec.SetCurrentKey("Entry No.");
+        Rec.SetAscending("Entry No.", true);
+        if Rec.FindSet() then
+            repeat
+                NewBalePosition += 1;
+                Rec."New Bale Position" := NewBalePosition;
+                Rec.Modify();
+            until Rec.Next() = 0;
+    end;
+
+    #region HELPER
+    local procedure GetLastEntryNo(): Integer
+    var
+        BaleNoRegradingLine: Record "PMP17 Bale No Regrading Line";
+    begin
+        BaleNoRegradingLine.Reset();
+        BaleNoRegradingLine.SetCurrentKey("Entry No.");
+
+        if BaleNoRegradingLine.FindLast() then
+            exit(BaleNoRegradingLine."Entry No.")
+        else
+            exit(0);
+    end;
+
+    #endregion HELPER
 }

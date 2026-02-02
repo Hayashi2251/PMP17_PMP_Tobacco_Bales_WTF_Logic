@@ -2,7 +2,7 @@
   "id": "7557767a-a051-4a25-9fb7-d8a1c338d21c",
   "name": "PMP Tobacco Bales Whse TF (Logic)",
   "publisher": "PT SME Solution",
-  "version": "1.0.2600.0",
+  "version": "1.0.2700.5",
   "brief": "",
   "description": "",
   "privacyStatement": "",
@@ -38,7 +38,7 @@
   ],
   "screenshots": [],
   "platform": "1.0.0.0",
-  "application": "26.0.0.0",
+  "application": "27.0.0.0",
   "idRanges": [
     {
       "from": 60000,
@@ -50,7 +50,7 @@
     "allowDownloadingSource": true,
     "includeSourceInSymbolFile": true
   },
-  "runtime": "15.0",
+  "runtime": "16.0",
   "features": [
     "NoImplicitWith"
   ]

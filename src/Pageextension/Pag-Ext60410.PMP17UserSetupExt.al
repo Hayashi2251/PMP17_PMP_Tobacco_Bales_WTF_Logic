@@ -14,7 +14,20 @@ pageextension 60410 "PMP17 User Setup Ext" extends "User Setup"
     // 
 
     #region Layout
-    layout { }
+    layout
+    {
+        addlast(Control1)
+        {
+            // LA TEMPORAIRE
+            field("SME073 Working Location"; Rec."SME073 Working Location")
+            {
+                ApplicationArea = All;
+                Caption = 'Working Location';
+                ToolTip = 'Specifies and stores the user''s last working location code.';
+                Editable = false;
+            }
+        }
+    }
     #endregion Layout
 
     #region Actions
@@ -32,8 +45,8 @@ pageextension 60410 "PMP17 User Setup Ext" extends "User Setup"
                     ChangeLocationRep: Report "PMP17 Change Working Loc. Code";
                 begin
                     ChangeLocationRep.SetUserID(Rec."User ID");
-                    if Rec."PMP17 Working Location Code" <> '' then begin
-                        ChangeLocationRep.SetLocationCode(Rec."PMP17 Working Location Code"); // As default
+                    if Rec."SME073 Working Location" <> '' then begin
+                        ChangeLocationRep.SetLocationCode(Rec."SME073 Working Location"); // As default
                     end;
                     ChangeLocationRep.Run();
                 end;

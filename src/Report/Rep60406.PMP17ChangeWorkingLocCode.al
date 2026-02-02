@@ -35,7 +35,7 @@ report 60406 "PMP17 Change Working Loc. Code"
 
             trigger OnAfterGetRecord()
             begin
-                UserSetup."PMP17 Working Location Code" := ReqLocationCode;
+                UserSetup."SME073 Working Location" := ReqLocationCode;
                 UserSetup.Modify();
                 Message('The working location code of user ID: %1, have successfully changed to %2', ReqUserID, ReqLocationCode);
             end;
@@ -60,16 +60,28 @@ report 60406 "PMP17 Change Working Loc. Code"
                         var
                             UserRec: Record User;
                             UserSetupRec: Record "User Setup";
+                            UserSelection: Codeunit "User Selection";
+                            ErrInfo: ErrorInfo;
                         begin
-                            Clear(ReqLocationCode);
+                            //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/01/07 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
                             UserRec.Reset();
                             if Page.RunModal(Page::Users, UserRec) = Action::LookupOK then begin
-                                ReqUserID := UserRec."User Name";
-
-                                if (UserSetupRec.Get(ReqUserID)) AND (UserSetupRec."PMP17 Working Location Code" <> '') then begin
-                                    ReqLocationCode := UserSetupRec."PMP17 Working Location Code";
+                                if (UserSetupRec.Get(UserRec."User Name")) then begin
+                                    ReqUserID := UserRec."User Name";
+                                    ReqLocationCode := UserSetupRec."SME073 Working Location";
+                                end else begin
+                                    ErrInfo.DataClassification(DataClassification::SystemMetadata);
+                                    ErrInfo.ErrorType(ErrorType::Client);
+                                    ErrInfo.Verbosity(Verbosity::Error);
+                                    ErrInfo.Title := 'User Setup not found';
+                                    ErrInfo.Message := StrSubstNo('The User does not have any Setup yet. Please provide the user setup for the Username: %1, before setting the working location code.', UserRec."User Name");
+                                    ErrInfo.PageNo(Page::"User Setup");
+                                    ErrInfo.AddNavigationAction('Open User Setup');
+                                    Error(ErrInfo);
+                                    Clear(ErrInfo);
                                 end;
                             end;
+                            //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/01/07 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
                         end;
                     }
                     field(ReqLocationCode; ReqLocationCode)
@@ -110,9 +122,13 @@ report 60406 "PMP17 Change Working Loc. Code"
             }
         }
         trigger OnOpenPage()
+        var
+            UserRec: Record "User Setup";
         begin
             if ReqUserID = '' then begin
-                ReqUserID := UserId;
+                UserRec.Get(UserId);
+                ReqUserID := UserRec."User ID";
+                ReqLocationCode := UserRec."SME073 Working Location";
                 ReqUserID_Visibility := true;
             end;
         end;
@@ -157,9 +173,9 @@ report 60406 "PMP17 Change Working Loc. Code"
             ReqLocationCode := WhseEmployeeRec."Location Code"
         else begin
             if IsErrorAvailable then
-                Message('You''re not allowed to work at %1', ReqLocationCode)
+                Message('You are not allowed to work at %1', ReqLocationCode)
             else
-                Error('You''re not allowed to work at %1', ReqLocationCode);
+                Error('You are not allowed to work at %1', ReqLocationCode);
             ReqLocationCode := '';
         end;
     end;
