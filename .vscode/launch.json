@@ -6,16 +6,11 @@
             "request": "launch",
             "type": "al",
             "environmentType": "OnPrem",
-            // "server": "https://bcsw26.southeastasia.cloudapp.azure.com",
-            "server": "https://bcsvrsw26",
-            // "serverInstance": "BC260",
-            // 
+            "server": "http://bcsvrsw26",
             "serverInstance": "BSJ_DMY01",
             "port": 7249,
-            // 
             "authentication": "UserPassword",
-            // "startupObjectId": 60417,
-            "startupObjectId": 60426,
+            "startupObjectId": 60416,
             "startupObjectType": "Page",
             "breakOnError": "All",
             "launchBrowser": true,

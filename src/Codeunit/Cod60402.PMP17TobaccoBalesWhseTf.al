@@ -304,6 +304,74 @@ codeunit 60402 "PMP17 Tobacco Bales Whse. Tf."
             exit(false);
     end;
 
+    procedure Test_InsertItemJnlLine(var tempItemJnlLine: Record "Item Journal Line" temporary; var TbcoBalesTFLine: Record "PMP17 Tbcco Bales Transfer"; UserSetupRec: Record "User Setup"; TransferToBinCode: Code[50]): Boolean
+    var
+        Item: Record Item;
+        IJL: Record "Item Journal Line";
+        ItemJnlTemplate: Record "Item Journal Template";
+        ItemJnlBatch: Record "Item Journal Batch";
+        LastLineNo: Integer;
+    begin
+        TbcoBalesTFLine.CalcFields("Description", "Sub Merk 1", "Sub Merk 2", "Sub Merk 3", "Sub Merk 4", "Sub Merk 5", "Old Bale Position");
+        Item.Reset();
+        IJL.Reset();
+        ItemJnlTemplate.Reset();
+        ItemJnlBatch.Reset();
+        ExtCompanySetup.Get();
+
+        IJL.SetRange("Journal Template Name", ExtCompanySetup."PMP17 Int. Tf. Jnl. Tmpt. Name");
+        IJL.SetRange("Journal Batch Name", ExtCompanySetup."PMP17 Int. Tf. Jnl. Batch Name");
+        if IJL.FindLast() then
+            LastLineNo := IJL."Line No.";
+
+        if LastLineNo mod 10000 > 0 then begin
+            LastLineNo += LastLineNo mod 10000;
+        end else begin
+            LastLineNo += 10000;
+        end;
+
+        ItemJnlTemplate.Get(ExtCompanySetup."PMP17 Int. Tf. Jnl. Tmpt. Name");
+        ItemJnlBatch.Get(ExtCompanySetup."PMP17 Int. Tf. Jnl. Tmpt. Name", ExtCompanySetup."PMP17 Int. Tf. Jnl. Batch Name");
+
+        tempItemJnlLine.Init();
+        tempItemJnlLine."Journal Template Name" := ItemJnlTemplate.Name;
+        tempItemJnlLine."Journal Batch Name" := ItemJnlBatch.Name;
+        tempItemJnlLine."Line No." := LastLineNo;
+        tempItemJnlLine."Source Code" := ItemJnlTemplate."Source Code";
+        tempItemJnlLine.Validate("Entry Type", tempItemJnlLine."Entry Type"::Transfer);
+        // tempItemJnlLine.SetUpNewLine(IJL);
+
+        tempItemJnlLine.Validate("Document Date", Today);
+        tempItemJnlLine.Validate("Posting Date", Today);
+
+        if ItemJnlBatch."No. Series" <> '' then begin
+            Clear(NoSeriesMgt);
+            tempItemJnlLine."Document No." := NoSeriesMgt.PeekNextNo(ItemJnlBatch."No. Series", tempItemJnlLine."Posting Date");
+        end;
+
+        tempItemJnlLine.Validate("Item No.", TbcoBalesTFLine."Item No.");
+        tempItemJnlLine.Validate("Variant Code", TbcoBalesTFLine."Variant Code");
+        tempItemJnlLine.Validate("Location Code", UserSetupRec."SME073 Working Location");
+        tempItemJnlLine.Validate("New Location Code", UserSetupRec."SME073 Working Location");
+        Item.Get(TempItemJnlLine."Item No.");
+        tempItemJnlLine.Validate("Unit of Measure Code", Item."Base Unit of Measure");
+        tempItemJnlLine.Validate(Quantity, TbcoBalesTFLine.Inventory);
+        tempItemJnlLine.Validate("Bin Code", TbcoBalesTFLine."Curr. Bin Code");
+        tempItemJnlLine.Validate("New Bin Code", TransferToBinCode);
+        // tempItemJnlLine."Package No." := TbcoBalesTFLine."Package No.";
+        // tempItemJnlLine."Lot No." := TbcoBalesTFLine."Lot No.";
+        tempItemJnlLine.Validate("Reason Code", ExtCompanySetup."PMP17 Tobacco Tf. Reason Code");
+        tempItemJnlLine."PMP15 Sub Merk 1" := TbcoBalesTFLine."Sub Merk 1";
+        tempItemJnlLine."PMP15 Sub Merk 2" := TbcoBalesTFLine."Sub Merk 2";
+        tempItemJnlLine."PMP15 Sub Merk 3" := TbcoBalesTFLine."Sub Merk 3";
+        tempItemJnlLine."PMP15 Sub Merk 4" := TbcoBalesTFLine."Sub Merk 4";
+        tempItemJnlLine."PMP15 Sub Merk 5" := TbcoBalesTFLine."Sub Merk 5";
+        if tempItemJnlLine.Insert() then
+            exit(true)
+        else
+            exit(false);
+    end;
+
     /// <summary> Generates <b>reservation entries</b> for an <b>Item Journal Line</b> reclassification based on <b>item tracking</b>, <b>package information</b>, and <b>destination bin</b> configuration. </summary>
     /// <remarks> This procedure first validates that <b>no existing reservation or tracking entries</b> exist for the provided Item Journal Line. It then ensures that the related <b>Item is configured with an Item Tracking Code</b>. A temporary <b>Tracking Specification</b> is initialized from the Item Journal Line and used to retrieve tracking data. Reservation entries are generated either from <b>temporary lookup results</b> or from <b>Package No. Information</b> records with <b>zero inventory</b>, depending on availability. This logic guarantees <b>item tracking integrity</b> during <b>internal transfer</b> or <b>reclassification</b> processes. </remarks>
     /// <param name="RecItemJnlLine"> The <b>Item Journal Line</b> for which reservation entries will be generated. </param>
@@ -343,9 +411,6 @@ codeunit 60402 "PMP17 Tobacco Bales Whse. Tf."
         TempGlobalEntrySummary.SetFilter("Lot No.", RecItemJnlLine."Lot No.");
         TempGlobalEntrySummary.SetFilter("Package No.", PackageNoInfoRec."Package No.");
         if TempGlobalEntrySummary.FindSet() then begin
-            // SerLotPkgArr[1] := TempGlobalEntrySummary."Serial No.";
-            // SerLotPkgArr[2] := TempGlobalEntrySummary."Lot No.";
-            // SerLotPkgArr[3] := TempGlobalEntrySummary."Package No.";
             InsertReservEntryRecfromTempTrackSpecIJL(RecReservEntry, TempTrackingSpecification, RecItemJnlLine, UserSetupRec, TransferToBinCode, TempGlobalEntrySummary);
         end else begin
             PackageNoInfo.SetAutoCalcFields();
@@ -355,9 +420,51 @@ codeunit 60402 "PMP17 Tobacco Bales Whse. Tf."
             PackageNoInfo.SetFilter("PMP04 Lot No.", PackageNoInfoRec."PMP04 Lot No.");
             PackageNoInfo.SetRange(Inventory, 0);
             if PackageNoInfo.FindFirst() then begin
-                // SerLotPkgArr[1] := '';
-                // SerLotPkgArr[2] := PackageNoInfo."PMP04 Lot No.";
-                // SerLotPkgArr[3] := PackageNoInfo."Package No.";
+                InsertReservEntryRecfromTempTrackSpecIJL(RecReservEntry, TempTrackingSpecification, RecItemJnlLine, UserSetupRec, TransferToBinCode, PackageNoInfo);
+            end;
+        end;
+        //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/01/09 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
+    end;
+
+    procedure GenerateRecReserveEntryItemJnlLine(var RecItemJnlLine: Record "Item Journal Line"; var TbcoBalesTFLine: Record "PMP17 Tbcco Bales Transfer"; UserSetupRec: Record "User Setup"; TransferToBinCode: Code[50]; var TempTrackingSpecification: Record "Tracking Specification" temporary)
+    var
+        Item: Record Item;
+        RecReservEntry: Record "Reservation Entry";
+        TrackingSpecification: Record "Tracking Specification";
+        PackageNoInfo: Record "Package No. Information";
+    begin
+        TbcoBalesTFLine.CalcFields("Description", "Sub Merk 1", "Sub Merk 2", "Sub Merk 3", "Sub Merk 4", "Sub Merk 5", "Old Bale Position");
+        if RecItemJnlLine.ReservEntryExist() then
+            Error('Item tracking information already exists for this reclassification journal line. Please remove the existing tracking before proceeding.');
+
+        Item.SetLoadFields("Item Tracking Code");
+        if not Item.Get(RecItemJnlLine."Item No.") then
+            Error('The specified Item No. "%1" could not be found. Please verify that the item exists in the system.', RecItemJnlLine."Item No.");
+
+        if Item."Item Tracking Code" = '' then
+            Error('The Item "%1" does not have an assigned Item Tracking Code. Please configure the Item Tracking Code in the Item Card before continuing.', RecItemJnlLine."Item No.");
+
+        if ItemJnlLineReserve.ReservEntryExist(RecItemJnlLine) then
+            Error('Reservation entries already exist for Item "%1" in this reclassification journal line. Please cancel or delete the existing reservations before performing this action.', RecItemJnlLine."Item No.");
+
+        ItemJnlLineReserve.InitFromItemJnlLine(TempTrackingSpecification, RecItemJnlLine);
+        TempTrackingSpecification.Insert();
+
+        //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/01/09 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+        RetrieveLookupData(TempTrackingSpecification, true);
+        TempTrackingSpecification.Delete();
+        TempGlobalEntrySummary.Reset();
+        TempGlobalEntrySummary.SetFilter("Lot No.", RecItemJnlLine."Lot No.");
+        TempGlobalEntrySummary.SetFilter("Package No.", TbcoBalesTFLine."Package No.");
+        if TempGlobalEntrySummary.FindSet() then begin
+            InsertReservEntryRecfromTempTrackSpecIJL(RecReservEntry, TempTrackingSpecification, RecItemJnlLine, UserSetupRec, TransferToBinCode, TempGlobalEntrySummary);
+        end else begin
+            PackageNoInfo.SetAutoCalcFields();
+            PackageNoInfo.SetRange("Item No.", RecItemJnlLine."Item No.");
+            PackageNoInfo.SetFilter("Variant Code", RecItemJnlLine."Variant Code");
+            PackageNoInfo.SetFilter("Package No.", TbcoBalesTFLine."Package No.");
+            PackageNoInfo.SetRange(Inventory, 0);
+            if PackageNoInfo.FindFirst() then begin
                 InsertReservEntryRecfromTempTrackSpecIJL(RecReservEntry, TempTrackingSpecification, RecItemJnlLine, UserSetupRec, TransferToBinCode, PackageNoInfo);
             end;
         end;
@@ -402,19 +509,7 @@ codeunit 60402 "PMP17 Tobacco Bales Whse. Tf."
         TempTrackingSpecification.Validate("Source Ref. No.", SourceTrackingSpecification."Source Ref. No.");
 
         TempTrackingSpecification.Validate("Bin Code", RecItemJnlLine."Bin Code");
-        //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/01/07 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
-        // TempTrackingSpecification.Validate("Lot No.", RecItemJnlLine."Lot No.");
-        // TempTrackingSpecification."Lot No." := RecItemJnlLine."Lot No.";
-
-        // if SerLotPkgArr[1] <> '' then
-        //     TempTrackingSpecification.Validate("Serial No.", SerLotPkgArr[1]);
-        // if SerLotPkgArr[2] <> '' then
-        //     TempTrackingSpecification.Validate("Lot No.", SerLotPkgArr[2]);
-        // if SerLotPkgArr[3] <> '' then
-        //     TempTrackingSpecification.Validate("Package No.", SerLotPkgArr[3]);
-
-        // TempTrackingSpecification.Validate("Bin Code", TransferToBinCode);
-
+        //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/01/07 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}s
         TempTrackingSpecification.Validate("Serial No.", TempEntrySummary."Serial No.");
         TempTrackingSpecification.Validate("Lot No.", TempEntrySummary."Lot No.");
         TempTrackingSpecification.Validate("Package No.", TempEntrySummary."Package No.");
@@ -591,6 +686,38 @@ codeunit 60402 "PMP17 Tobacco Bales Whse. Tf."
         if Test_InsertItemJnlLine(tempItemJnlLine, PackageNoInfoRec, UserSetupRec, TransferToBinCode) then begin
             InsertItemJnlLinefromTemp(ItemJnlLine, tempItemJnlLine);
             GenerateRecReserveEntryItemJnlLine(ItemJnlLine, PackageNoInfoRec, UserSetupRec, TransferToBinCode, TempTrackingSpecification);
+            // Commit();
+            if PostItemReclassJnl(ItemJnlLine, TempTrackingSpecification) then
+                exit(true)
+            else
+                exit(false);
+            exit(true);
+        end else
+            exit(false);
+    end;
+
+    procedure PostTobaccoBalesTransferItemReclass(var ItemJnlLine: Record "Item Journal Line"; var TbcoBalesTFLine: Record "PMP17 Tbcco Bales Transfer"; UserSetupRec: Record "User Setup"; TransferToBinCode: Code[50]): Boolean
+    var
+        tempItemJnlLine: Record "Item Journal Line" temporary;
+        ItemJnlTemplate: Record "Item Journal Template";
+        ItemJnlBatch: Record "Item Journal Batch";
+        TempTrackingSpecification: Record "Tracking Specification" temporary;
+    begin
+        TbcoBalesTFLine.CalcFields("Description", "Sub Merk 1", "Sub Merk 2", "Sub Merk 3", "Sub Merk 4", "Sub Merk 5", "Old Bale Position");
+        tempItemJnlLine.DeleteAll();
+        TempTrackingSpecification.DeleteAll();
+        ItemJnlTemplate.Reset();
+        ItemJnlBatch.Reset();
+        ExtCompanySetup.Get();
+        Clear(ItemTrackingLine);
+
+        PMPAppLogic.ValidateExtendedCompanySetupwithAction(ExtCompanySetup.FieldNo("PMP17 Int. Tf. Jnl. Tmpt. Name"));
+        PMPAppLogic.ValidateExtendedCompanySetupwithAction(ExtCompanySetup.FieldNo("PMP17 Int. Tf. Jnl. Batch Name"));
+        PMPAppLogic.ValidateExtendedCompanySetupwithAction(ExtCompanySetup.FieldNo("PMP17 Tobacco Tf. Reason Code"));
+
+        if Test_InsertItemJnlLine(tempItemJnlLine, TbcoBalesTFLine, UserSetupRec, TransferToBinCode) then begin
+            InsertItemJnlLinefromTemp(ItemJnlLine, tempItemJnlLine);
+            GenerateRecReserveEntryItemJnlLine(ItemJnlLine, TbcoBalesTFLine, UserSetupRec, TransferToBinCode, TempTrackingSpecification);
             // Commit();
             if PostItemReclassJnl(ItemJnlLine, TempTrackingSpecification) then
                 exit(true)
