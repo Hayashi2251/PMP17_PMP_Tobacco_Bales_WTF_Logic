@@ -49,6 +49,8 @@ page 50036 "PMP17 Internal Transfer"
                         if Page.RunModal(Page::"Bin List", BinRec) = Action::LookupOK then begin
                             TransferToBinCode_g := BinRec.Code;
                             CurrentStep_g += 1;
+                            TobaccoBalesTF_TextCaption := StrSubstNo('Internal Transfer | %1', TransferToBinCode_g);
+                            TextCaption_StyleExprTxt := 'strong';
                         end;
                     end;
 
@@ -64,6 +66,8 @@ page 50036 "PMP17 Internal Transfer"
                         if BinRec.FindFirst() then begin
                             TransferToBinCode_g := BinRec.Code;
                             CurrentStep_g += 1;
+                            TobaccoBalesTF_TextCaption := StrSubstNo('Internal Transfer | %1', TransferToBinCode_g);
+                            TextCaption_StyleExprTxt := 'strong';
                         end else
                             Error('The scanned bin code (%1) is not available in current working location code of %2.', TransferToBinCode_g, UserSetupRec."SME073 Working Location");
                     end;
@@ -225,8 +229,12 @@ page 50036 "PMP17 Internal Transfer"
                         PackageNoInfoRecLocal.SetRange("Variant Code", VariantCode_g);
                         PackageNoInfoRecLocal.SetRange("Package No.", BaleNoCode_g);
                         PackageNoInfoRecLocal.SetRange("Location Filter", CurrLocationCode_g);
+                        if LotNoCode_g <> '' then begin
+                            PackageNoInfoRecLocal.SetRange("PMP04 Lot No.", LotNoCode_g);
+                        end;
                         PackageNoInfoRecLocal.SetAutoCalcFields(Inventory, "PMP04 Bin Code");
                         PackageNoInfoRecLocal.SetFilter(Inventory, '> 0');
+                        PackageNoInfoRecLocal.SetFilter("PMP04 Bin Code", '<> %1', TransferToBinCode_g);
                         if PackageNoInfoRecLocal.FindFirst() then begin
                             PackageNoInfoRecLocal.CalcFields(Inventory);
 
@@ -261,7 +269,11 @@ page 50036 "PMP17 Internal Transfer"
                         PackageNoInfoRecLocal.SetRange("Item No.", ItemNoCode_g);
                         PackageNoInfoRecLocal.SetRange("Variant Code", VariantCode_g);
                         PackageNoInfoRecLocal.SetRange("Location Filter", CurrLocationCode_g);
+                        if LotNoCode_g <> '' then begin
+                            PackageNoInfoRecLocal.SetRange("PMP04 Lot No.", LotNoCode_g);
+                        end;
                         PackageNoInfoRecLocal.SetAutoCalcFields(Inventory, "PMP04 Bin Code");
+                        PackageNoInfoRecLocal.SetFilter("PMP04 Bin Code", '<> %1', TransferToBinCode_g);
                         PackageNoInfoRecLocal.SetFilter(Inventory, '> 0');
                         if Page.RunModal(Page::"Package No. Information List", PackageNoInfoRecLocal) = Action::LookupOK then begin
                             PackageNoInfoRecLocal.CalcFields(Inventory);
@@ -343,6 +355,7 @@ page 50036 "PMP17 Internal Transfer"
                     ApplicationArea = All;
                     Caption = 'Quantity';
                     ToolTip = 'Specifies the value of the Quantity field';
+                    DecimalPlaces = 0 : 5;
                 }
                 field(UnitofMeasureCode_g; UnitofMeasureCode_g)
                 {
@@ -441,6 +454,7 @@ page 50036 "PMP17 Internal Transfer"
                         ApplicationArea = All;
                         Caption = 'Quantity';
                         ToolTip = 'Specifies the value of the Quantity field.', Comment = '%';
+                        DecimalPlaces = 0 : 5;
                     }
                     field("Base Unit of Measure"; Rec."Base Unit of Measure")
                     {
@@ -556,6 +570,32 @@ page 50036 "PMP17 Internal Transfer"
             }
             #endregion CURRENT STEP 1
             #region CURRENT STEP 2
+            action(DeleteSelectedLines)
+            {
+                Caption = 'Delete';
+                Image = Delete;
+                InFooterBar = true;
+                Enabled = CurrentStep_g = 2;
+                Visible = CurrentStep_g = 2;
+
+                trigger OnAction()
+                var
+                    TempRec: Record "PMP17 Tbco Internal Tansfer" temporary;
+                begin
+                    CurrPage.SetSelectionFilter(Rec);
+                    if Rec.IsEmpty() then exit;
+
+                    TempRec.Copy(Rec, true);
+                    if TempRec.FindSet() then
+                        repeat
+                            Rec.Get(TempRec."User ID", TempRec."Entry No.");
+                            Rec.Delete();
+                        until TempRec.Next() = 0;
+
+                    Rec.Reset();
+                    CurrPage.Update(false);
+                end;
+            }
             action(Rescan)
             {
                 ApplicationArea = All;
@@ -592,6 +632,8 @@ page 50036 "PMP17 Internal Transfer"
                     // PkgNoInfoRec.SetRange("PMP04 Bin Code", FromBinCode_g);
                     if PkgNoInfoRec.FindFirst() then begin
                         AddRecordPkgNo__List(Rec, PkgNoInfoRec);
+                    end else begin
+                        AddRecordNONPKG__List(Rec);
                     end;
 
                     ResetAllInternalTransferControl();
@@ -667,7 +709,6 @@ page 50036 "PMP17 Internal Transfer"
         ExtCompanySetup.Get();
         PMPAppLogicMgmt.ValidateExtendedCompanySetupwithAction(ExtCompanySetup.FieldNo("PMP17 Gen. Int. Tf. Jnl. Tmpt"));
         PMPAppLogicMgmt.ValidateExtendedCompanySetupwithAction(ExtCompanySetup.FieldNo("PMP17 Gen. Int. Tf. Jnl. Batch"));
-        // PMPAppLogicMgmt.ValidateExtendedCompanySetupwithAction(ExtCompanySetup.FieldNo("PMP17 Internal Transfer RC"));
         UserSetupRec.Get(UserId);
         CurrLocationCode_g := UserSetupRec."SME073 Working Location";
         Clear(TransferToBinCode_g);
@@ -891,7 +932,7 @@ page 50036 "PMP17 Internal Transfer"
         PackageNoInfoRecLocal.SetRange("Package No.", PackageNo);
         PackageNoInfoRecLocal.SetFilter(Inventory, '>%1', 0);
         if PackageNoInfoRecLocal.FindFirst() then begin
-            PackageNoInfoRecLocal.CalcFields("PMP04 Lot No.");
+            PackageNoInfoRecLocal.CalcFields("PMP04 Lot No.", "PMP04 Bin Code", Inventory);
             ItemNoCode_g := PackageNoInfoRecLocal."Item No.";
             if ItemRecLocal.Get(ItemNoCode_g) then begin
                 ItemDescription_g := ItemRecLocal.Description;
@@ -901,6 +942,7 @@ page 50036 "PMP17 Internal Transfer"
             LotNoCode_g := PackageNoInfoRecLocal."PMP04 Lot No.";
             BaleNoCode_g := PackageNoInfoRecLocal."Package No.";
             InventoryQty_g := PackageNoInfoRecLocal.Inventory;
+            FromBinCode_g := PackageNoInfoRecLocal."PMP04 Bin Code";
             exit(true);
         end;
         exit(false);
@@ -948,6 +990,63 @@ page 50036 "PMP17 Internal Transfer"
         Rec."Unit of Measure" := UnitofMeasureCode_g;
         Rec.Insert();
         Commit();
+    end;
+
+    procedure AddRecordNONPKG__List(var Rec: Record "PMP17 Tbco Internal Tansfer" temporary)
+    var
+        ItemRec: Record Item;
+        BinContentRec: Record "Bin Content";
+        LastEntryNo: Integer;
+    begin
+        Clear(LastEntryNo);
+        ItemRec.Reset();
+
+        BinContentRec.Reset();
+        BinContentRec.SetRange("Item No.", ItemNoCode_g);
+        BinContentRec.SetRange("Variant Code", VariantCode_g);
+        BinContentRec.SetRange("Package No. Filter", BaleNoCode_g);
+        BinContentRec.SetRange("Lot No. Filter", LotNoCode_g);
+        BinContentRec.SetRange("Location Code", CurrLocationCode_g);
+        BinContentRec.SetRange("Bin Code", FromBinCode_g);
+        BinContentRec.SetRange("Unit of Measure Code", UnitofMeasureCode_g);
+        BinContentRec.CalcFields(Quantity, "Quantity (Base)");
+        BinContentRec.SetFilter("Quantity (Base)", '>0');
+        if BinContentRec.FindFirst() then begin
+            Rec.Reset();
+            Rec.SetRange("Package No.", BaleNoCode_g);
+            Rec.SetRange("Item No.", ItemNoCode_g);
+            Rec.SetRange("Variant Code", VariantCode_g);
+            Rec.SetRange("Curr. Location Code", CurrLocationCode_g);
+            Rec.SetRange("Curr. Bin Code", FromBinCode_g);
+            Rec.SetRange("Dest. Bin Code", TransferToBinCode_g);
+            Rec.SetRange("Lot No.", LotNoCode_g);
+            Rec.SetRange("Unit of Measure", UnitofMeasureCode_g);
+            if Rec.FindFirst() then begin
+                Rec.Delete();
+                Commit();
+            end;
+
+            Rec.Reset(); // penting
+            LastEntryNo := GetLastEntryNo(Rec);
+            Rec.Init();
+            Rec."Entry No." := LastEntryNo + 1;
+            Rec."User ID" := UserId();
+            Rec."Package No." := BaleNoCode_g;
+            Rec."Item No." := BinContentRec."Item No.";
+            Rec."Variant Code" := BinContentRec."Variant Code";
+            // Sub merk 1-5 tidak ada di dalam Bin Content
+            Rec."Lot No." := LotNoCode_g;
+            Rec."Curr. Location Code" := CurrLocationCode_g;
+            Rec."Curr. Bin Code" := FromBinCode_g;
+            Rec."Dest. Bin Code" := TransferToBinCode_g;
+            Rec.Quantity := InventoryQty_g;
+            ItemRec.Get(Rec."Item No.");
+            Rec."Base Unit of Measure" := ItemRec."Base Unit of Measure";
+            Rec."Unit of Measure" := UnitofMeasureCode_g;
+            Rec.Insert();
+            Commit();
+        end;
+
     end;
     #endregion HELPER
 
