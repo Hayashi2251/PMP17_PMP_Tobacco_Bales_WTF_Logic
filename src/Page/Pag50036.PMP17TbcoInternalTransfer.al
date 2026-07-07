@@ -570,6 +570,7 @@ page 50036 "PMP17 Internal Transfer"
             }
             #endregion CURRENT STEP 1
             #region CURRENT STEP 2
+            //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/06/29 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
             action(DeleteSelectedLines)
             {
                 Caption = 'Delete';
@@ -596,6 +597,7 @@ page 50036 "PMP17 Internal Transfer"
                     CurrPage.Update(false);
                 end;
             }
+            //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/06/29 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
             action(Rescan)
             {
                 ApplicationArea = All;
