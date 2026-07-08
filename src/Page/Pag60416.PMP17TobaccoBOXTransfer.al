@@ -180,7 +180,9 @@ page 60416 "PMP17 Tobacco Box Transfer"
                     ApplicationArea = All;
                     Caption = 'Weight (Kgs)';
                     ToolTip = 'Specifies the value of the Weight (Kgs) field';
-                    Editable = false;
+                    //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/07/08 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                    // Editable = false;
+                    //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/07/08 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
                 }
                 field(WeighingDeviceID; WeighingDeviceID)
                 {
@@ -202,7 +204,6 @@ page 60416 "PMP17 Tobacco Box Transfer"
                 repeater(PkgNo__List)
                 {
                     Caption = 'Selected Box Number';
-                    Editable = false;
                     field("Package No."; Rec."Package No.")
                     {
                         ApplicationArea = All;
@@ -229,41 +230,6 @@ page 60416 "PMP17 Tobacco Box Transfer"
                         ApplicationArea = All;
                         Caption = 'Variant Code';
                         ToolTip = 'Specifies the variant of the item on the line.';
-                        Editable = false;
-                    }
-                    field("PMP04 Sub Merk 1"; Rec."Sub Merk 1")
-                    {
-                        ApplicationArea = All;
-                        Caption = 'Sub Merk 1';
-                        ToolTip = 'Specifies the submerk 1 associated with this line';
-                        Editable = false;
-                    }
-                    field("PMP04 Sub Merk 2"; Rec."Sub Merk 2")
-                    {
-                        ApplicationArea = All;
-                        Caption = 'Sub Merk 2';
-                        ToolTip = 'Specifies the submerk 2 associated with this line';
-                        Editable = false;
-                    }
-                    field("PMP04 Sub Merk 3"; Rec."Sub Merk 3")
-                    {
-                        ApplicationArea = All;
-                        Caption = 'Sub Merk 3';
-                        ToolTip = 'Specifies the submerk 3 associated with this line';
-                        Editable = false;
-                    }
-                    field("PMP04 Sub Merk 4"; Rec."Sub Merk 4")
-                    {
-                        ApplicationArea = All;
-                        Caption = 'Sub Merk 4';
-                        ToolTip = 'Specifies the submerk 4 associated with this line';
-                        Editable = false;
-                    }
-                    field("PMP04 Sub Merk 5"; Rec."Sub Merk 5")
-                    {
-                        ApplicationArea = All;
-                        Caption = 'Sub Merk 5';
-                        ToolTip = 'Specifies the submerk 5 associated with this line';
                         Editable = false;
                     }
                     field("Lot No."; Rec."Lot No.")
@@ -307,7 +273,7 @@ page 60416 "PMP17 Tobacco Box Transfer"
                         ApplicationArea = All;
                         Caption = 'Measured Weight (Kgs)';
                         ToolTip = 'Specifies the value of Measured Weight (Kgs) with this line that comes from the weighing scale ID.';
-                        Editable = false;
+                        // Editable = false;
                     }
                     field("Base Unit of Measure"; Rec."Base Unit of Measure")
                     {
@@ -331,6 +297,41 @@ page 60416 "PMP17 Tobacco Box Transfer"
                         ToolTip = 'Specifies the value of the New Bale Position field.', Comment = '%';
                         Editable = false;
                         Visible = false;
+                    }
+                    field("PMP04 Sub Merk 1"; Rec."Sub Merk 1")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Sub Merk 1';
+                        ToolTip = 'Specifies the submerk 1 associated with this line';
+                        Editable = false;
+                    }
+                    field("PMP04 Sub Merk 2"; Rec."Sub Merk 2")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Sub Merk 2';
+                        ToolTip = 'Specifies the submerk 2 associated with this line';
+                        Editable = false;
+                    }
+                    field("PMP04 Sub Merk 3"; Rec."Sub Merk 3")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Sub Merk 3';
+                        ToolTip = 'Specifies the submerk 3 associated with this line';
+                        Editable = false;
+                    }
+                    field("PMP04 Sub Merk 4"; Rec."Sub Merk 4")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Sub Merk 4';
+                        ToolTip = 'Specifies the submerk 4 associated with this line';
+                        Editable = false;
+                    }
+                    field("PMP04 Sub Merk 5"; Rec."Sub Merk 5")
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Sub Merk 5';
+                        ToolTip = 'Specifies the submerk 5 associated with this line';
+                        Editable = false;
                     }
                     field("User ID"; Rec."User ID")
                     {
@@ -400,47 +401,72 @@ page 60416 "PMP17 Tobacco Box Transfer"
             }
             #endregion CURRENT STEP 1
             #region CURRENT STEP 2
-            action(Rescan)
+            //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/07/08 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+            #region REMOVE STEP 2
+            // action(Rescan)
+            // {
+            //     ApplicationArea = All;
+            //     Caption = 'Re-Scan';
+            //     InFooterBar = true;
+            //     Enabled = CurrentStep = 2;
+            //     Visible = CurrentStep = 2;
+            //     trigger OnAction()
+            //     begin
+            //         Rec.Reset();
+            //         Rec.SetRange("Bin Code", TransferToBinCode);
+            //         Rec.SetRange("User ID", UserId());
+            //         Rec.DeleteAll();
+            //         Commit();
+
+            //         ClearBaleNoCode();
+            //         ResetItemNVariantFields();
+            //         ResetTextCaptionValues();
+            //     end;
+            // }
+            // action(Save)
+            // {
+            //     ApplicationArea = All;
+            //     Caption = 'Save';
+            //     InFooterBar = true;
+            //     Image = Save;
+            //     Enabled = CurrentStep = 2;
+            //     Visible = CurrentStep = 2;
+            //     trigger OnAction()
+            //     begin
+            //         ClearBaleNoCode();
+            //         ResetItemNVariantFields();
+            //         ResetTextCaptionValues();
+
+            //         Rec.Reset();
+            //         Rec.SetRange("Bin Code", TransferToBinCode);
+            //         Rec.SetRange("User ID", UserId());
+            //         Rec.ModifyAll(Saved, true);
+            //         // Commit();
+            //     end;
+            // }
+            #endregion REMOVE STEP 2
+            action(Delete)
             {
                 ApplicationArea = All;
-                Caption = 'Re-Scan';
+                Caption = 'Delete';
+                Image = GetSourceDoc;
                 InFooterBar = true;
                 Enabled = CurrentStep = 2;
                 Visible = CurrentStep = 2;
                 trigger OnAction()
+                var
+                    TbcoBalesTFRecLine: Record "PMP17 Tbcco Bales Transfer";
                 begin
-                    Rec.Reset();
-                    Rec.SetRange("Bin Code", TransferToBinCode);
-                    Rec.SetRange("User ID", UserId());
-                    Rec.DeleteAll();
-                    Commit();
-
-                    ClearBaleNoCode();
-                    ResetItemNVariantFields();
-                    ResetTextCaptionValues();
+                    TbcoBalesTFRecLine.Reset();
+                    CurrPage.SetSelectionFilter(TbcoBalesTFRecLine);
+                    if TbcoBalesTFRecLine.FindSet() then
+                        repeat
+                            TbcoBalesTFRecLine.Delete();
+                        until TbcoBalesTFRecLine.Next() = 0;
+                    // CurrPage.Update();
                 end;
             }
-            action(Save)
-            {
-                ApplicationArea = All;
-                Caption = 'Save';
-                InFooterBar = true;
-                Image = Save;
-                Enabled = CurrentStep = 2;
-                Visible = CurrentStep = 2;
-                trigger OnAction()
-                begin
-                    ClearBaleNoCode();
-                    ResetItemNVariantFields();
-                    ResetTextCaptionValues();
-
-                    Rec.Reset();
-                    Rec.SetRange("Bin Code", TransferToBinCode);
-                    Rec.SetRange("User ID", UserId());
-                    Rec.ModifyAll(Saved, true);
-                    // Commit();
-                end;
-            }
+            //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/07/08 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
             action(GetWeighingID)
             {
                 ApplicationArea = All;
@@ -492,7 +518,6 @@ page 60416 "PMP17 Tobacco Box Transfer"
                                 NotifyUserFailedPosting();
                         until Rec.Next() = 0;
 
-                    // Clear(TransferToBinCode);
                     ClearBaleNoCode();
                     Message('The Reclassification Journal is successfully posted.');
                     NotifyUserSuccessPosting();
@@ -524,6 +549,8 @@ page 60416 "PMP17 Tobacco Box Transfer"
                 InFooterBar = true;
                 Image = NextRecord;
                 trigger OnAction()
+                var
+                    RecRef: RecordRef;
                 begin
                     if CurrentStep = 1 then begin
                         if TransferToBinCode = '' then
@@ -539,7 +566,9 @@ page 60416 "PMP17 Tobacco Box Transfer"
                         if (UserSetupRec."PMP19 Def. Weighing Device ID" <> '') OR (UserSetupRec."PMP19 Def. Weighing Device ID" <> ' ') then begin
                             WeighingDeviceID := UserSetupRec."PMP19 Def. Weighing Device ID";
                             if not WeighingScaleRec.Get(WeighingDeviceID) then begin
-                                Error('The Weighing Scale ID configured in your User Setup (%1) was not found in the Weighing Scale List. Please review the Weighing Scale ID assigned to user %2.', WeighingDeviceID, UserId);
+                                RecRef.GetTable(UserSetupRec);
+                                DMJAppLogicMgmt.ErrorRecordRefwithAction(RecRef, UserSetupRec.FieldNo("PMP19 Def. Weighing Device ID"), Page::"User Setup", 'Weighing Scale ID', StrSubstNo('The Weighing Scale ID configured in your User Setup (%1) was not found in the Weighing Scale List. Please review the Weighing Scale ID assigned to user %2.', WeighingDeviceID, UserId));
+                                // Error('The Weighing Scale ID configured in your User Setup (%1) was not found in the Weighing Scale List. Please review the Weighing Scale ID assigned to user %2.', WeighingDeviceID, UserId);
                             end
                         end;
                     end;
@@ -563,6 +592,7 @@ page 60416 "PMP17 Tobacco Box Transfer"
         Clear(WeighingDeviceID);
         Clear(WeighingQuantity);
         Clear(WeighingDate);
+        Clear(DMJAppLogicMgmt);
         ResetItemNVariantFields();
         UserSetupRec.Get(UserId);
         WeighingScaleRec.Reset();
@@ -588,6 +618,7 @@ page 60416 "PMP17 Tobacco Box Transfer"
         TextCaption_StyleExprTxt, BaleNoText : Text;
 
     protected var
+        DMJAppLogicMgmt: Codeunit "PMP02 App Logic Management";
         WeighingScaleMgmt: Codeunit "PMP19 Weighing Scale Mgt.";
         ExtCompanySetup: Record "PMP07 Extended Company Setup";
         WeighingScaleRec: Record "PMP19 Weighing Scales";
@@ -654,8 +685,6 @@ page 60416 "PMP17 Tobacco Box Transfer"
         Rec.SetRange("Variant Code", PkgNoInfoRec."Variant Code");
         if Rec.FindFirst() then
             Rec.Delete();
-        // else
-        // NewBalePosition += 1;
 
         Rec.Reset(); // important
 
@@ -674,6 +703,9 @@ page 60416 "PMP17 Tobacco Box Transfer"
         ItemRec.Get(Rec."Item No.");
         Rec."Base Unit of Measure" := ItemRec."Base Unit of Measure";
         Rec."User ID" := UserId();
+        //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/07/08 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+        Rec.Saved := true;
+        //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/07/08 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
         Rec.Insert();
 
         Rec.Reset();

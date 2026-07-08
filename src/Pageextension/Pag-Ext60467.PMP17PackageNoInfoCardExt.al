@@ -16,7 +16,7 @@ pageextension 60467 "PMP17 Package No Info Card Ext" extends "Package No. Inform
     #region Layout
     layout
     {
-        addbefore(Standard)
+        addlast(Weight)
         {
             field("PMP17 Measured Weight (Kgs)"; Rec."PMP17 Measured Weight (Kgs)")
             {
