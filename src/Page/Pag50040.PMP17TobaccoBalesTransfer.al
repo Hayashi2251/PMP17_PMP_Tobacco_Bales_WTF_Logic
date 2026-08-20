@@ -36,6 +36,14 @@ page 50040 "PMP17 Tobacco Bales Transfer"
                     StyleExpr = TextCaption_StyleExprTxt;
                 } // TEXT CAPTION
 
+                //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/08/12 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                field(PostingDate; PostingDate)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Posting Date';
+                    ToolTip = 'Specifies the value of the Posting Date for the Tobacco Bales Transfer.';
+                }
+                //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/08/12 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
                 field(TransferToBinCode; TransferToBinCode)
                 {
                     ApplicationArea = All;
@@ -99,7 +107,7 @@ page 50040 "PMP17 Tobacco Bales Transfer"
                             ItemNoCode := PkgNoInfoRec."Item No.";
                             VariantNoCode := PkgNoInfoRec."Variant Code";
                             PackageNoInfoRec := PkgNoInfoRec;
-                            if TobaccoBalesWhseTFMgmt.PostTobaccoBalesTransferItemReclass(ItemJnlLine, PackageNoInfoRec, UserSetupRec, TransferToBinCode) then begin
+                            if TobaccoBalesWhseTFMgmt.PostTobaccoBalesTransferItemReclass(ItemJnlLine, PackageNoInfoRec, UserSetupRec, TransferToBinCode, PostingDate) then begin
                                 Message('The Reclassification Journal is successfully posted.');
                                 NotifyUserSuccessPosting()
                             end else
@@ -147,7 +155,7 @@ page 50040 "PMP17 Tobacco Bales Transfer"
                             ItemNoCode := PkgNoInfoRec."Item No.";
                             VariantNoCode := PkgNoInfoRec."Variant Code";
                             PackageNoInfoRec := PkgNoInfoRec;
-                            if TobaccoBalesWhseTFMgmt.PostTobaccoBalesTransferItemReclass(ItemJnlLine, PackageNoInfoRec, UserSetupRec, TransferToBinCode) then begin
+                            if TobaccoBalesWhseTFMgmt.PostTobaccoBalesTransferItemReclass(ItemJnlLine, PackageNoInfoRec, UserSetupRec, TransferToBinCode, PostingDate) then begin
                                 Clear(TransferToBinCode);
                                 ClearBaleNoCode();
                                 Message('The Reclassification Journal is successfully posted.');
@@ -229,6 +237,24 @@ page 50040 "PMP17 Tobacco Bales Transfer"
         }
     }
     #endregion ACTIONS
+    trigger OnInit()
+    begin
+        ExtCompanySetup.Get();
+        ResetTextCaptionValues();
+        Clear(TransferToBinCode);
+        Clear(BaleNoCode);
+        Clear(BaleNoText);
+        ResetItemNVariantFields();
+        UserSetupRec.Get(UserId);
+        CurrentStep := 1;
+    end;
+
+    trigger OnOpenPage()
+    begin
+        //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/08/12 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+        PostingDate := WorkDate();
+        //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/08/12 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
+    end;
 
     var
         ChangeLocationCodeRep: Report "PMP17 Change Working Loc. Code";
@@ -242,22 +268,12 @@ page 50040 "PMP17 Tobacco Bales Transfer"
     protected var
         ExtCompanySetup: Record "PMP07 Extended Company Setup";
         CurrentStep: Integer;
+        PostingDate: Date;
         TransferToBinCode, BaleNoCode : Code[50];
         ItemNoCode: Code[20];
         VariantNoCode: Code[10];
         TobaccoBalesTF_TextCaption: Text;
 
-    trigger OnInit()
-    begin
-        ExtCompanySetup.Get();
-        ResetTextCaptionValues();
-        Clear(TransferToBinCode);
-        Clear(BaleNoCode);
-        Clear(BaleNoText);
-        ResetItemNVariantFields();
-        UserSetupRec.Get(UserId);
-        CurrentStep := 1;
-    end;
 
     local procedure ResetItemNVariantFields()
     begin

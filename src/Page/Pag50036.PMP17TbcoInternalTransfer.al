@@ -31,6 +31,15 @@ page 50036 "PMP17 Internal Transfer"
             {
                 Caption = '';
                 Visible = CurrentStep_g = 1;
+
+                //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/08/12 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                field(PostingDate; PostingDate)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Posting Date';
+                    ToolTip = 'Specifies the value of the Posting Date field.';
+                }
+                //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/08/12 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
                 field(TransferToBinCode; TransferToBinCode_g)
                 {
                     ApplicationArea = All;
@@ -662,7 +671,7 @@ page 50036 "PMP17 Internal Transfer"
                                 continue;
                             end;
 
-                            if TobaccoBalesWhseTFMgmt.PostInternalTransferItemReclass(ItemJnlLine, Rec, UserSetupRec, TransferToBinCode_g) then begin
+                            if TobaccoBalesWhseTFMgmt.PostInternalTransferItemReclass(ItemJnlLine, Rec, UserSetupRec, TransferToBinCode_g, PostingDate) then begin
                                 Rec.Delete();
                                 Commit();
                             end else
@@ -729,6 +738,13 @@ page 50036 "PMP17 Internal Transfer"
         MaxNavigatePage_g := 2;
     end;
 
+    trigger OnOpenPage()
+    begin
+        //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/08/12 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+        PostingDate := WorkDate();
+        //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/08/12 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
+    end;
+
     #region GLOBAL VARIABLE
     var
         ChangeLocationCodeRep: Report "PMP17 Change Working Loc. Code";
@@ -744,6 +760,7 @@ page 50036 "PMP17 Internal Transfer"
         ExtCompanySetup: Record "PMP07 Extended Company Setup";
         InventoryQty_g: Decimal;
         MaxNavigatePage_g, CurrentStep_g : Integer;
+        PostingDate: Date;
         TobaccoBalesTF_TextCaption: Text;
         ItemNoCode_g, VariantCode_g, ItemDescription_g, LotNoCode_g, BaleNoCode_g, UnitofMeasureCode_g : Text;
         // BaleNoCode_g, LotNoCode_g : Code[50];

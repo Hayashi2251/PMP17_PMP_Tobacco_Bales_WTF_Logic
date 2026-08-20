@@ -34,12 +34,19 @@ page 60417 "PMP17 Tobacco Bale Resequence"
             {
                 Caption = '';
                 Visible = CurrentStep = 1;
-
+                //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/08/12 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                field(PostingDate; PostingDate)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Posting Date';
+                    ToolTip = 'Specifies the value of the Posting Date field.';
+                }
+                //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/08/12 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
                 field(BinCode; BinCode)
                 {
                     ApplicationArea = All;
                     Caption = 'Bin Code';
-                    ToolTip = '';
+                    ToolTip = 'Specifies the value of the destination Bin Code field to move for the tobacco bales resequencing order.';
                     ShowMandatory = true;
                     ExtendedDatatype = Barcode;
 
@@ -79,6 +86,8 @@ page 60417 "PMP17 Tobacco Bale Resequence"
                             Error('The scanned bin code (%1) is not available in current working location code of %2.', BinCode, UserSetupRec."SME073 Working Location");
                     end;
                 }
+                // Document Type (BLANK | Production Hand-over)
+                // Ext. Doc. No. (disabled | required)
             }
             // ==============================================
             // GROUP: PAGE2
@@ -279,7 +288,7 @@ page 60417 "PMP17 Tobacco Bale Resequence"
                     {
                         ApplicationArea = All;
                         Caption = 'Current Bin Code';
-                        ToolTip = 'Specifies the Current Bin Code associated with this line'; 
+                        ToolTip = 'Specifies the Current Bin Code associated with this line';
                         Editable = false;
                     }
                     field("Bin Code"; Rec."Bin Code")
@@ -320,19 +329,34 @@ page 60417 "PMP17 Tobacco Bale Resequence"
     {
         area(navigation)
         {
-            // action(Refresh)
-            // {
-            //     ApplicationArea = All;
-            //     Caption = 'Refresh';
-            //     Enabled = CurrentStep > 1;
-            //     Visible = CurrentStep > 1;
-            //     InFooterBar = true;
-            //     Image = PreviousRecord;
-            //     trigger OnAction()
-            //     begin
-            //         CurrPage.Update(false);
-            //     end;
-            // }
+            //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/07/15 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+            action(Refresh)
+            {
+                ApplicationArea = All;
+                Caption = 'Delete';
+                Enabled = CurrentStep > 1;
+                Visible = CurrentStep > 1;
+                InFooterBar = true;
+                Image = Delete;
+                trigger OnAction()
+                var
+                    TempRec: Record "PMP17 TbccoBalesWhseTFPkgNo" temporary;
+                begin
+                    CurrPage.SetSelectionFilter(Rec);
+                    if Rec.IsEmpty() then exit;
+
+                    TempRec.Copy(Rec, true);
+                    if TempRec.FindSet() then
+                        repeat
+                            Rec.Get(TempRec."Entry No.", TempRec."Package No.");
+                            Rec.Delete();
+                        until TempRec.Next() = 0;
+
+                    Rec.Reset();
+                    CurrPage.Update(false);
+                end;
+            }
+            //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/07/15 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
             action(Back)
             {
                 ApplicationArea = All;
@@ -450,7 +474,7 @@ page 60417 "PMP17 Tobacco Bale Resequence"
                                         PkgNoInfoRec.CalcFields(Inventory);
                                         PkgNoInfoRec.CalcFields("PMP04 Bin Code");
                                         PkgNoInfoRec.CalcFields("PMP04 Lot No.");
-                                        TobaccoBalesWhseTFMgmt.PostTobaccoBalesTransferItemReclass(ItemJnlLine, PkgNoInfoRec, UserSetupRec, BinCode);
+                                        TobaccoBalesWhseTFMgmt.PostTobaccoBalesTransferItemReclass(ItemJnlLine, PkgNoInfoRec, UserSetupRec, BinCode, PostingDate);
                                     end;
                                     PkgNoInfoRec."PMP07 Bale Position" := Rec."New Bale Position";
                                     PkgNoInfoRec.Modify();
@@ -480,6 +504,13 @@ page 60417 "PMP17 Tobacco Bale Resequence"
         MaxNavigatePage := 2;
     end;
 
+    trigger OnOpenPage()
+    begin
+        //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/08/12 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+        PostingDate := WorkDate();
+        //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/08/12 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
+    end;
+
     var
         ChangeLocationCodeRep: Report "PMP17 Change Working Loc. Code";
         TobaccoBalesWhseTFMgmt: Codeunit "PMP17 Tobacco Bales Whse. Tf.";
@@ -494,6 +525,7 @@ page 60417 "PMP17 Tobacco Bale Resequence"
     protected var
         ExtCompanySetup: Record "PMP07 Extended Company Setup";
         CurrentStep: Integer;
+        PostingDate: Date;
         BinCode: Code[20];
         BaleNoCode: Code[50];
         TobaccoBalesTF_TextCaption: Text;
@@ -521,9 +553,10 @@ page 60417 "PMP17 Tobacco Bale Resequence"
     var
         LastBalePosInt: Integer;
         ItemRec: Record Item;
+        BinContentRec: Record "Bin Content";
     begin
         Rec.Reset();
-        PkgNoInfoRec.CalcFields(Inventory, "PMP04 Bin Code", "PMP04 Lot No.");
+        PkgNoInfoRec.CalcFields(Inventory, "PMP04 Bin Code", "PMP04 Lot No.", "PMP07 Location Code");
         Rec.SetRange("Package No.", PkgNoInfoRec."Package No.");
         Rec.SetRange("Item No.", PkgNoInfoRec."Item No.");
         Rec.SetRange("Variant Code", PkgNoInfoRec."Variant Code");
@@ -544,7 +577,26 @@ page 60417 "PMP17 Tobacco Bale Resequence"
         Rec."Curr. Location Code" := UserSetupRec."SME073 Working Location";
         Rec."Curr. Bin Code" := PkgNoInfoRec."PMP04 Bin Code";
         Rec."Bin Code" := BinCode;
-        Rec.Inventory := PkgNoInfoRec.Inventory;
+        //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/08/17 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+        // REMOVE:
+        // Rec.Inventory := PkgNoInfoRec.Inventory;
+
+        BinContentRec.Reset();
+        BinContentRec.SetRange("Item No.", Rec."Item No.");
+        BinContentRec.SetRange("Variant Code", Rec."Variant Code");
+        BinContentRec.SetRange("Location Code", PkgNoInfoRec."PMP07 Location Code");
+        BinContentRec.SetRange("Bin Code", Rec."Curr. Bin Code");
+        BinContentRec.SetRange("Package No. Filter", Rec."Package No.");
+        BinContentRec.SetRange("Lot No. Filter", Rec."Lot No.");
+        BinContentRec.CalcFields(Quantity, "Quantity (Base)");
+        BinContentRec.SetFilter("Quantity (Base)", '>0');
+        if BinContentRec.FindFirst() then begin
+            BinContentRec.CalcFields(Quantity, "Quantity (Base)");
+            Rec.Inventory := BinContentRec.Quantity;
+        end else begin
+            Rec.Inventory := PkgNoInfoRec.Inventory;
+        end;
+        //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/08/17 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
         ItemRec.Get(Rec."Item No.");
         Rec."Base Unit of Measure" := ItemRec."Base Unit of Measure";
         Rec.Insert();
