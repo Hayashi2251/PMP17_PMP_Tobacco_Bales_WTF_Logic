@@ -323,7 +323,10 @@ codeunit 60402 "PMP17 Tobacco Bales Whse. Tf."
             exit(false);
     end;
 
-    procedure Test_InsertItemJnlLine(var tempItemJnlLine: Record "Item Journal Line" temporary; var TbcoBalesTFLine: Record "PMP17 Tbcco Bales Transfer"; UserSetupRec: Record "User Setup"; TransferToBinCode: Code[50]): Boolean
+    //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+    // procedure Test_InsertItemJnlLine(var tempItemJnlLine: Record "Item Journal Line" temporary; var TbcoBalesTFLine: Record "PMP17 Tbcco Bales Transfer"; UserSetupRec: Record "User Setup"; TransferToBinCode: Code[50]): Boolean
+    procedure Test_InsertItemJnlLine(var tempItemJnlLine: Record "Item Journal Line" temporary; var TbcoBalesTFLine: Record "PMP17 Tbcco Bales Transfer"; UserSetupRec: Record "User Setup"; TransferToBinCode: Code[50]; PostingDate: Date): Boolean
+    //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
     var
         Item: Record Item;
         IJL: Record "Item Journal Line";
@@ -360,8 +363,12 @@ codeunit 60402 "PMP17 Tobacco Bales Whse. Tf."
         tempItemJnlLine.Validate("Entry Type", tempItemJnlLine."Entry Type"::Transfer);
         // tempItemJnlLine.SetUpNewLine(IJL);
 
-        tempItemJnlLine.Validate("Document Date", Today);
-        tempItemJnlLine.Validate("Posting Date", Today);
+        //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+        // tempItemJnlLine.Validate("Document Date", Today);
+        // tempItemJnlLine.Validate("Posting Date", Today);
+        tempItemJnlLine.Validate("Document Date", PostingDate);
+        tempItemJnlLine.Validate("Posting Date", PostingDate);
+        //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
 
         if ItemJnlBatch."No. Series" <> '' then begin
             Clear(NoSeriesMgt);
@@ -685,7 +692,10 @@ codeunit 60402 "PMP17 Tobacco Bales Whse. Tf."
             exit(false);
     end;
 
-    procedure PostTobaccoBalesTransferItemReclass(var ItemJnlLine: Record "Item Journal Line"; var TbcoBalesTFLine: Record "PMP17 Tbcco Bales Transfer"; UserSetupRec: Record "User Setup"; TransferToBinCode: Code[50]): Boolean
+    //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+    // procedure PostTobaccoBalesTransferItemReclass(var ItemJnlLine: Record "Item Journal Line"; var TbcoBalesTFLine: Record "PMP17 Tbcco Bales Transfer"; UserSetupRec: Record "User Setup"; TransferToBinCode: Code[50]): Boolean
+    procedure PostTobaccoBalesTransferItemReclass(var ItemJnlLine: Record "Item Journal Line"; var TbcoBalesTFLine: Record "PMP17 Tbcco Bales Transfer"; UserSetupRec: Record "User Setup"; TransferToBinCode: Code[50]; PostingDate: Date): Boolean
+    //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
     var
         //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - PD - 2026/06/17 - START >>>>>>>>>>>>>>>>>>>>>>>>>>>}
         NextLineNo: Integer;
@@ -707,7 +717,10 @@ codeunit 60402 "PMP17 Tobacco Bales Whse. Tf."
         PMPAppLogic.ValidateExtendedCompanySetupwithAction(ExtCompanySetup.FieldNo("PMP17 Int. Tf. Jnl. Batch Name"));
         PMPAppLogic.ValidateExtendedCompanySetupwithAction(ExtCompanySetup.FieldNo("PMP17 Tobacco Tf. Reason Code"));
 
-        if Test_InsertItemJnlLine(tempItemJnlLine, TbcoBalesTFLine, UserSetupRec, TransferToBinCode) then begin
+        //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+        // if Test_InsertItemJnlLine(tempItemJnlLine, TbcoBalesTFLine, UserSetupRec, TransferToBinCode, PostingDate) then begin
+        if Test_InsertItemJnlLine(tempItemJnlLine, TbcoBalesTFLine, UserSetupRec, TransferToBinCode, PostingDate) then begin
+            //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
             //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - PD - 2026/06/17 - START >>>>>>>>>>>>>>>>>>>>>>>>>>>}
             /// REMOVE:
             // InsertItemJnlLinefromTemp(ItemJnlLine, tempItemJnlLine);

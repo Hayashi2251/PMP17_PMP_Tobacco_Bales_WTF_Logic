@@ -102,6 +102,14 @@ page 50040 "PMP17 Tobacco Bales Transfer"
                         PkgNoInfoRec.SetAutoCalcFields(Inventory);
                         PkgNoInfoRec.SetFilter(Inventory, '> 0');
                         if Page.RunModal(Page::"Package No. Information List", PkgNoInfoRec) = Action::LookupOK then begin
+                            //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                            PkgNoInfoRec.CalcFields(Inventory, "PMP07 Location Code", "PMP04 Bin Code", "PMP04 Lot No.");
+                            // Check if the current Location Code matches the user's Working Location. If not, throw an error showing the item's current location.
+                            if PkgNoInfoRec."PMP07 Location Code" <> UserSetupRec."SME073 Working Location" then begin
+                                Error('You cannot process %1 %2 because it is currently located in %3. Your assigned working location is %4.', PkgNoInfoRec.TableCaption(), PkgNoInfoRec."Package No.", PkgNoInfoRec."PMP07 Location Code", UserSetupRec."SME073 Working Location");
+                            end;
+                            //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
+
                             BaleNoText := PkgNoInfoRec."Package No.";
                             BaleNoCode := PkgNoInfoRec."Package No.";
                             ItemNoCode := PkgNoInfoRec."Item No.";
@@ -150,6 +158,14 @@ page 50040 "PMP17 Tobacco Bales Transfer"
                         PkgNoInfoRec.SetRange("Package No.", BaleNoCode);
                         PkgNoInfoRec.SetFilter(Inventory, '>0');
                         if PkgNoInfoRec.FindFirst() then begin
+                            //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                            PkgNoInfoRec.CalcFields(Inventory, "PMP07 Location Code", "PMP04 Bin Code", "PMP04 Lot No.");
+                            // Check if the current Location Code matches the user's Working Location. If not, throw an error showing the item's current location.
+                            if PkgNoInfoRec."PMP07 Location Code" <> UserSetupRec."SME073 Working Location" then begin
+                                Error('You cannot process %1 %2 because it is currently located in %3. Your assigned working location is %4.', PkgNoInfoRec.TableCaption(), PkgNoInfoRec."Package No.", PkgNoInfoRec."PMP07 Location Code", UserSetupRec."SME073 Working Location");
+                            end;
+                            //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
+
                             BaleNoText := PkgNoInfoRec."Package No.";
                             BaleNoCode := PkgNoInfoRec."Package No.";
                             ItemNoCode := PkgNoInfoRec."Item No.";

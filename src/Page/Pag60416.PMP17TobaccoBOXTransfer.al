@@ -13,6 +13,11 @@ page 60416 "PMP17 Tobacco Box Transfer"
     // 2025/11/21  SW         PMP17                                     Create Page
     // 2026/03/22  SW         PMP17                                     Revise whole page
     // 
+    // PAGE FIELDS
+    // Date        Developer  Version List  Name                            Trigger                 Description
+    // ================================================================================================================
+    // 2026/08/12  SW         DMJ17         Posting Date                    -                       Add field
+    // 
     ApplicationArea = All;
     Caption = 'Tobacco Box Transfer';
     PageType = NavigatePage;
@@ -29,6 +34,14 @@ page 60416 "PMP17 Tobacco Box Transfer"
             {
                 Caption = '';
                 Visible = CurrentStep = 1;
+                //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                field(PostingDate; PostingDate)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Posting Date';
+                    ToolTip = 'Specifies the value of the Posting Date for the Tobacco Bales Transfer.';
+                }
+                //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
                 ///<summary><b>Text Caption</b> of the Tobacco Bales Transfer Processing Page</summary>
                 field(TransferToBinCode; TransferToBinCode)
                 {
@@ -118,6 +131,14 @@ page 60416 "PMP17 Tobacco Box Transfer"
                             PkgNoInfoRec.SetFilter("Package No.", BaleNoText);
                             if PkgNoInfoRec.FindSet() then
                                 repeat
+                                    //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                                    PkgNoInfoRec.CalcFields(Inventory, "PMP07 Location Code", "PMP04 Bin Code", "PMP04 Lot No.");
+                                    // Check if the current Location Code matches the user's Working Location. If not, throw an error showing the item's current location.
+                                    if PkgNoInfoRec."PMP07 Location Code" <> UserSetupRec."SME073 Working Location" then begin
+                                        Error('You cannot process %1 %2 because it is currently located in %3. Your assigned working location is %4.', PkgNoInfoRec.TableCaption(), PkgNoInfoRec."Package No.", PkgNoInfoRec."PMP07 Location Code", UserSetupRec."SME073 Working Location");
+                                    end;
+                                    //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
+
                                     BaleNoText := PkgNoInfoRec."Package No.";
                                     BaleNoCode := PkgNoInfoRec."Package No.";
                                     ItemNoCode := PkgNoInfoRec."Item No.";
@@ -164,6 +185,14 @@ page 60416 "PMP17 Tobacco Box Transfer"
                         PkgNoInfoRec.SetRange("Package No.", BaleNoCode);
                         PkgNoInfoRec.SetFilter(Inventory, '>0');
                         if PkgNoInfoRec.FindFirst() then begin
+                            //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                            PkgNoInfoRec.CalcFields(Inventory, "PMP07 Location Code", "PMP04 Bin Code", "PMP04 Lot No.");
+                            // Check if the current Location Code matches the user's Working Location. If not, throw an error showing the item's current location.
+                            if PkgNoInfoRec."PMP07 Location Code" <> UserSetupRec."SME073 Working Location" then begin
+                                Error('You cannot process %1 %2 because it is currently located in %3. Your assigned working location is %4.', PkgNoInfoRec.TableCaption(), PkgNoInfoRec."Package No.", PkgNoInfoRec."PMP07 Location Code", UserSetupRec."SME073 Working Location");
+                            end;
+                            //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
+
                             BaleNoText := PkgNoInfoRec."Package No.";
                             BaleNoCode := PkgNoInfoRec."Package No.";
                             ItemNoCode := PkgNoInfoRec."Item No.";
@@ -183,6 +212,23 @@ page 60416 "PMP17 Tobacco Box Transfer"
                     //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/07/08 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
                     // Editable = false;
                     //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/07/08 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                    trigger OnValidate()
+                    var
+                        TbcoBalesTFRecLine: Record "PMP17 Tbcco Bales Transfer";
+                    begin
+                        //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ15 - SW - 2026/09/08 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                        if BaleNoCode <> '' then begin
+                            TbcoBalesTFRecLine.Reset();
+                            TbcoBalesTFRecLine.SetRange("User ID", UserId);
+                            TbcoBalesTFRecLine.SetRange("Package No.", BaleNoCode);
+                            if TbcoBalesTFRecLine.FindFirst() then begin
+                                TbcoBalesTFRecLine.Validate("Measured Weight (Kgs)", WeighingQuantity);
+                                TbcoBalesTFRecLine.Modify();
+                                CurrPage.Update();
+                            end;
+                        end;
+                        //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ15 - SW - 2026/09/08 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                    end;
                 }
                 field(WeighingDeviceID; WeighingDeviceID)
                 {
@@ -460,10 +506,9 @@ page 60416 "PMP17 Tobacco Box Transfer"
                     TbcoBalesTFRecLine.Reset();
                     CurrPage.SetSelectionFilter(TbcoBalesTFRecLine);
                     if TbcoBalesTFRecLine.FindSet() then
-                        repeat
-                            TbcoBalesTFRecLine.Delete();
-                        until TbcoBalesTFRecLine.Next() = 0;
-                    // CurrPage.Update();
+                        if not TbcoBalesTFRecLine.IsEmpty() then
+                            TbcoBalesTFRecLine.DeleteAll(true);
+                    CurrPage.Update(false);
                 end;
             }
             //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/07/08 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
@@ -478,8 +523,21 @@ page 60416 "PMP17 Tobacco Box Transfer"
                 trigger OnAction()
                 var
                     SelectWeighingID: Page "PMP19 Select Weighing ID";
+                    TbcoBalesTFRecLine: Record "PMP17 Tbcco Bales Transfer";
                 begin
                     WeighingScaleMgmt.GetWeighingData(WeighingDeviceID, WeighingQuantity, WeighingUoM, WeighingDate);
+
+                    //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ15 - SW - 2026/09/08 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                    if BaleNoCode <> '' then begin
+                        TbcoBalesTFRecLine.Reset();
+                        TbcoBalesTFRecLine.SetRange("User ID", UserId);
+                        TbcoBalesTFRecLine.SetRange("Package No.", BaleNoCode);
+                        if TbcoBalesTFRecLine.FindFirst() then begin
+                            TbcoBalesTFRecLine.Validate("Measured Weight (Kgs)", WeighingQuantity);
+                            TbcoBalesTFRecLine.Modify();
+                        end;
+                    end;
+                    //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ15 - SW - 2026/09/08 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
                 end;
             }
             action(Post)
@@ -503,7 +561,7 @@ page 60416 "PMP17 Tobacco Box Transfer"
                                 continue;
                             end;
 
-                            if TobaccoBalesWhseTFMgmt.PostTobaccoBalesTransferItemReclass(ItemJnlLine, Rec, UserSetupRec, TransferToBinCode) then begin
+                            if TobaccoBalesWhseTFMgmt.PostTobaccoBalesTransferItemReclass(ItemJnlLine, Rec, UserSetupRec, TransferToBinCode, PostingDate) then begin
                                 PkgNoInfoRec.Reset();
                                 PkgNoInfoRec.SetRange("Item No.", Rec."Item No.");
                                 PkgNoInfoRec.SetRange("Variant Code", Rec."Variant Code");
@@ -563,13 +621,14 @@ page 60416 "PMP17 Tobacco Box Transfer"
                         Rec.SetRange("Bin Code", TransferToBinCode);
                         Rec.SetRange("User ID", UserId());
 
-                        if (UserSetupRec."PMP19 Def. Weighing Device ID" <> '') OR (UserSetupRec."PMP19 Def. Weighing Device ID" <> ' ') then begin
-                            WeighingDeviceID := UserSetupRec."PMP19 Def. Weighing Device ID";
-                            if not WeighingScaleRec.Get(WeighingDeviceID) then begin
-                                RecRef.GetTable(UserSetupRec);
-                                DMJAppLogicMgmt.ErrorRecordRefwithAction(RecRef, UserSetupRec.FieldNo("PMP19 Def. Weighing Device ID"), Page::"User Setup", 'Weighing Scale ID', StrSubstNo('The Weighing Scale ID configured in your User Setup (%1) was not found in the Weighing Scale List. Please review the Weighing Scale ID assigned to user %2.', WeighingDeviceID, UserId));
-                                // Error('The Weighing Scale ID configured in your User Setup (%1) was not found in the Weighing Scale List. Please review the Weighing Scale ID assigned to user %2.', WeighingDeviceID, UserId);
-                            end
+                        if IsGetWeighingScale then begin
+                            if (UserSetupRec."PMP19 Def. Weighing Device ID" <> '') OR (UserSetupRec."PMP19 Def. Weighing Device ID" <> ' ') then begin
+                                WeighingDeviceID := UserSetupRec."PMP19 Def. Weighing Device ID";
+                                if not WeighingScaleRec.Get(WeighingDeviceID) then begin
+                                    RecRef.GetTable(UserSetupRec);
+                                    DMJAppLogicMgmt.ErrorRecordRefwithAction(RecRef, UserSetupRec.FieldNo("PMP19 Def. Weighing Device ID"), Page::"User Setup", 'Weighing Scale ID', StrSubstNo('The Weighing Scale ID configured in your User Setup (%1) was not found in the Weighing Scale List. Please review the Weighing Scale ID assigned to user %2.', WeighingDeviceID, UserId));
+                                end
+                            end;
                         end;
                     end;
 
@@ -596,6 +655,7 @@ page 60416 "PMP17 Tobacco Box Transfer"
         ResetItemNVariantFields();
         UserSetupRec.Get(UserId);
         WeighingScaleRec.Reset();
+        PostingDate := WorkDate();
 
         CurrentStep := 1;
         MaxNavigatePage := 2;
@@ -625,6 +685,7 @@ page 60416 "PMP17 Tobacco Box Transfer"
         IsGetWeighingScale: Boolean;
         MaxNavigatePage, CurrentStep : Integer;
         WeighingQuantity: Decimal;
+        PostingDate: Date;
         WeighingDate: DateTime;
         TransferToBinCode, BaleNoCode : Code[50];
         ItemNoCode, WeighingDeviceID : Code[20];

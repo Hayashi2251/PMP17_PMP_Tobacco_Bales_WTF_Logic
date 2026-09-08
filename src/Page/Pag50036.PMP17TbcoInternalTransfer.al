@@ -12,7 +12,11 @@ page 50036 "PMP17 Internal Transfer"
     // ============================================================================================================
     // 2026/04/22  SW         PMP17         -                           Create Page
     // 
-
+    // PAGE FIELDS
+    // Date        Developer  Version List  Name                            Trigger                 Description
+    // ================================================================================================================
+    // 2026/08/12  SW         DMJ17         Posting Date                    -                       Add field
+    // 
     ApplicationArea = All;
     Caption = 'Internal Transfer';
     PageType = NavigatePage;
@@ -679,7 +683,10 @@ page 50036 "PMP17 Internal Transfer"
                         until Rec.Next() = 0;
 
                         ResetAllInternalTransferControl();
-                        Message('The Reclassification Journal is successfully posted.');
+                        //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - KP - 2026/08/20 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                        // Message('The Reclassification Journal is successfully posted.');
+                        Message('Internal Transfer process is successfully posted.');
+                        //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - KP - 2026/08/20 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
                         NotifyUserSuccessPosting();
                     end;
                 end;
