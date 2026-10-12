@@ -744,6 +744,7 @@ codeunit 60402 "PMP17 Tobacco Bales Whse. Tf."
     procedure PostItemReclassJnl(var ItemJnlLine: Record "Item Journal Line"; var TempTrackingSpecification: Record "Tracking Specification" temporary): Boolean
     var
         TempTrackSpec: Record "Tracking Specification" temporary;
+        ReservationManagement: Codeunit "Reservation Management";
         ReservationMgmt: Codeunit "Reservation Management";
         ItemJnlPostLineMgmt: Codeunit "Item Jnl.-Post Line";
         ItemRec: Record Item;
@@ -760,6 +761,11 @@ codeunit 60402 "PMP17 Tobacco Bales Whse. Tf."
 
         ItemJnlPostLineMgmt.Run(ItemJnlLine);
         ItemJnlPostBatchMgmt.PostWhseJnlLine(ItemJnlLine, ItemJnlLine.Quantity, ItemJnlLine."Quantity (Base)", TempTrackSpec);
+
+        ReservationManagement.SetReservSource(ItemJnlLine);
+        ReservationManagement.SetItemTrackingHandling(1);
+        ReservationManagement.DeleteReservEntries(true, 0);
+        ItemJnlLine.Delete();
         exit(true);
     end;
     #endregion TOBACCO BALES TRANSFER
@@ -1491,6 +1497,45 @@ codeunit 60402 "PMP17 Tobacco Bales Whse. Tf."
         ItemJnlBatch.SetRange("Journal Template Name", ExtCompanySetup."PMP17 Int. Tf. Jnl. Tmpt. Name");
         ItemJnlBatchPage.SetRecord(ItemJnlBatch);
         ItemJnlBatchPage.Run();
+    end;
+    
+    procedure OpenItemTrackingSummaryFormfromItemJnlLine(var RecItemJnlLine: Record "Item Journal Line"): Record "Entry Summary" temporary;
+    var
+        ItemRec: Record Item;
+        ItemTrackingSummaryForm: Page "Item Tracking Summary";
+        TrackingSpecification: Record "Tracking Specification";
+        TempTrackingSpecification: Record "Tracking Specification" temporary;
+    begin
+        ItemTrackingCode.Reset();
+        TrackingSpecification.Reset();
+        TempTrackingSpecification.Reset();
+
+        ItemJnlLineReserve.InitFromItemJnlLine(TempTrackingSpecification, RecItemJnlLine);
+        CurrBinCode := RecItemJnlLine."Bin Code";
+        ItemRec.Get(RecItemJnlLine."Item No.");
+        ItemTrackingCode.Get(ItemRec."Item Tracking Code");
+        CurrItemTrackingCode := ItemTrackingCode;
+
+        TempTrackingSpecification.Insert();
+        RetrieveLookupData(TempTrackingSpecification, true);
+        TempTrackingSpecification.Delete();
+        TempGlobalEntrySummary.Reset();
+        TempGlobalEntrySummary.SetCurrentKey("Expiration Date");
+        TempGlobalEntrySummary.SetFilter("Expiration Date", '<>%1', 0D);
+        if TempGlobalEntrySummary.IsEmpty() then
+            TempGlobalEntrySummary.SetTrackingKey();
+        TempGlobalEntrySummary.SetRange("Expiration Date");
+        TempGlobalEntrySummary.SetFilter("Bin Content", '>0');
+
+        ItemTrackingSummaryForm.SetTableView(TempGlobalEntrySummary);
+        ItemTrackingSummaryForm.SetCurrentBinAndItemTrkgCode(CurrBinCode, CurrItemTrackingCode);
+        ItemTrackingSummaryForm.SetSources(TempGlobalReservEntry, TempGlobalEntrySummary);
+        ItemTrackingSummaryForm.LookupMode(true);
+        ItemTrackingSummaryForm.SetSelectionMode(false);
+        if ItemTrackingSummaryForm.RunModal() = ACTION::LookupOK then begin
+            ItemTrackingSummaryForm.GetRecord(TempGlobalEntrySummary);
+            exit(TempGlobalEntrySummary);
+        end;
     end;
     #endregion HELPER
 }

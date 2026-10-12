@@ -129,6 +129,10 @@ page 50036 "PMP17 Internal Transfer"
                         if ItemRecLocal.Get(ItemNoCode_g) then begin
                             ItemDescription_g := ItemRecLocal.Description;
                             UnitofMeasureCode_g := ItemRecLocal."Base Unit of Measure";
+
+                            //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/10/12 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                            ItemTrackingCodeRec.Get(ItemRecLocal."Item Tracking Code");
+                            //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/10/12 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
                         end;
                         //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/05/26 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
                     end;
@@ -192,6 +196,68 @@ page 50036 "PMP17 Internal Transfer"
                     ToolTip = 'Specifies the value of the Item Description field';
                     Editable = false;
                 }
+                //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/10/12 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                field(FromBinCode_g; FromBinCode_g)
+                {
+                    ApplicationArea = All;
+                    Caption = 'From Bin Code';
+                    ToolTip = 'Specifies the value of the From Bin Code field';
+                    trigger OnValidate()
+                    var
+                        BinContentRecLocal: Record "Bin Content";
+                    begin
+                        BinContentRecLocal.Reset();
+                        BinContentRecLocal.SetRange("Location Code", CurrLocationCode_g);
+                        BinContentRecLocal.SetRange("Bin Code", FromBinCode_g);
+                        BinContentRecLocal.SetRange("Item No.", ItemNoCode_g);
+                        if VariantCode_g <> '' then
+                            BinContentRecLocal.SetRange("Variant Code", VariantCode_g);
+                        if UnitofMeasureCode_g <> '' then
+                            BinContentRecLocal.SetRange("Unit of Measure Code", UnitofMeasureCode_g);
+                        if LotNoCode_g <> '' then
+                            BinContentRecLocal.SetRange("Lot No. Filter", LotNoCode_g);
+                        if BaleNoCode_g <> '' then
+                            BinContentRecLocal.SetRange("Package No. Filter", BaleNoCode_g);
+                        BinContentRecLocal.SetAutoCalcFields(Quantity, "Quantity (Base)");
+                        BinContentRecLocal.SetFilter(Quantity, '> 0');
+                        if BinContentRecLocal.FindFirst() then begin
+                            BinContentRecLocal.CalcFields(Quantity, "Quantity (Base)");
+                            FromBinCode_g := BinContentRecLocal."Bin Code";
+                            InventoryQty_g := BinContentRecLocal.Quantity;
+                        end else
+                            Error('No available quantity found for the selected Item in Bin %1, with the specified criteria of Item %2, Variant %3, Lot %4, Package %5 at Location of %6', FromBinCode_g, ItemNoCode_g, VariantCode_g, LotNoCode_g, BaleNoCode_g, CurrLocationCode_g);
+                    end;
+
+                    trigger OnDrillDown()
+                    var
+                        BinContentRecLocal: Record "Bin Content";
+                    begin
+                        BinContentRecLocal.Reset();
+                        Clear(BinContentRecLocal);
+
+                        BinContentRecLocal.SetRange("Location Code", CurrLocationCode_g);
+                        BinContentRecLocal.SetRange("Item No.", ItemNoCode_g);
+                        if VariantCode_g <> '' then
+                            BinContentRecLocal.SetRange("Variant Code", VariantCode_g);
+                        if UnitofMeasureCode_g <> '' then
+                            BinContentRecLocal.SetRange("Unit of Measure Code", UnitofMeasureCode_g);
+                        if LotNoCode_g <> '' then
+                            BinContentRecLocal.SetRange("Lot No. Filter", LotNoCode_g);
+                        if BaleNoCode_g <> '' then
+                            BinContentRecLocal.SetRange("Package No. Filter", BaleNoCode_g);
+                        BinContentRecLocal.SetAutoCalcFields(Quantity, "Quantity (Base)");
+                        BinContentRecLocal.SetFilter(Quantity, '> 0');
+                        BinContentRecLocal.SetFilter("Bin Code", '<> %1', TransferToBinCode_g);
+                        if BinContentRecLocal.Count > 0 then begin
+                            if Page.RunModal(Page::"Bin Content", BinContentRecLocal) = Action::LookupOK then begin
+                                BinContentRecLocal.CalcFields(Quantity, "Quantity (Base)");
+                                FromBinCode_g := BinContentRecLocal."Bin Code";
+                                InventoryQty_g := BinContentRecLocal.Quantity;
+                            end
+                        end else
+                            Error('No available quantity found for the selected Item with the specified criteria of Item %1, Variant %2, Lot %3, Package %4 at Location of %5', ItemNoCode_g, VariantCode_g, LotNoCode_g, BaleNoCode_g, CurrLocationCode_g);
+                    end;
+                }
                 field(LotNoCode_g; LotNoCode_g)
                 {
                     ApplicationArea = All;
@@ -207,20 +273,40 @@ page 50036 "PMP17 Internal Transfer"
 
                     trigger OnDrillDown()
                     var
-                        LotNoInfoRecLocal: Record "Lot No. Information";
-                    begin
-                        LotNoInfoRecLocal.Reset();
-                        Clear(LotNoInfoRecLocal);
+                        // LotNoInfoRecLocal: Record "Lot No. Information";
+                        ItemJnlLineReserve: Codeunit "Item Jnl. Line-Reserve";
+                        ItemTrackingDataCollection: Codeunit "Item Tracking Data Collection";
+                        Math: Codeunit "Math";
+                        TempTrackingSpecification: Record "Tracking Specification" temporary;
+                        tempItemJnlLine: Record "Item Journal Line" temporary;
+                        ItemTrackingCode: Record "Item Tracking Code";
+                        ItemRec: Record Item;
 
-                        LotNoInfoRecLocal.SetRange(Blocked, false);
-                        LotNoInfoRecLocal.SetRange("Item No.", ItemNoCode_g);
-                        LotNoInfoRecLocal.SetRange("Variant Code", VariantCode_g);
-                        LotNoInfoRecLocal.SetRange("Location Filter", CurrLocationCode_g);
-                        if Page.RunModal(Page::"Lot No. Information List", LotNoInfoRecLocal) = Action::LookupOK then begin
-                            LotNoCode_g := LotNoInfoRecLocal."Lot No.";
-                            Clear(InventoryQty_g);
-                            Clear(FromBinCode_g);
-                        end;
+                        TempGlobalEntrySummary: Record "Entry Summary" temporary;
+                    begin
+                        // LotNoInfoRecLocal.Reset();
+                        // Clear(LotNoInfoRecLocal);
+
+                        // LotNoInfoRecLocal.SetRange(Blocked, false);
+                        // LotNoInfoRecLocal.SetRange("Item No.", ItemNoCode_g);
+                        // LotNoInfoRecLocal.SetRange("Variant Code", VariantCode_g);
+                        // LotNoInfoRecLocal.SetRange("Location Filter", CurrLocationCode_g);
+                        // if Page.RunModal(Page::"Lot No. Information List", LotNoInfoRecLocal) = Action::LookupOK then begin
+                        //     LotNoCode_g := LotNoInfoRecLocal."Lot No.";
+                        //     Clear(InventoryQty_g);
+                        //     Clear(FromBinCode_g);
+                        // end;
+
+                        BuildTempItemJournalForEntrySummary(tempItemJnlLine);
+                        TempGlobalEntrySummary.Init();
+                        TempGlobalEntrySummary := TobaccoBalesWhseTFMgmt.OpenItemTrackingSummaryFormfromItemJnlLine(tempItemJnlLine);
+                        TempGlobalEntrySummary.Insert();
+
+                        if (TempGlobalEntrySummary."Lot No." = '') AND (TempGlobalEntrySummary."Package No." = '') then exit;
+
+                        LotNoCode_g := TempGlobalEntrySummary."Lot No.";
+                        BaleNoCode_g := TempGlobalEntrySummary."Package No.";
+                        InventoryQty_g := TempGlobalEntrySummary."Total Quantity";
                     end;
                 }
                 field(BaleNoCode_g; BaleNoCode_g)
@@ -249,7 +335,13 @@ page 50036 "PMP17 Internal Transfer"
                         PackageNoInfoRecLocal.SetFilter(Inventory, '> 0');
                         PackageNoInfoRecLocal.SetFilter("PMP04 Bin Code", '<> %1', TransferToBinCode_g);
                         if PackageNoInfoRecLocal.FindFirst() then begin
-                            PackageNoInfoRecLocal.CalcFields(Inventory);
+                            //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/30 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                            PackageNoInfoRecLocal.CalcFields(Inventory, "PMP07 Location Code", "PMP04 Bin Code", "PMP04 Lot No.");
+                            // Check if the current Location Code matches the user's Working Location. If not, throw an error showing the item's current location.
+                            if PackageNoInfoRecLocal."PMP07 Location Code" <> UserSetupRec."SME073 Working Location" then begin
+                                Error('You cannot process %1 %2 because it is currently located in %3. Your assigned working location is %4.', PackageNoInfoRecLocal.TableCaption(), PackageNoInfoRecLocal."Package No.", PackageNoInfoRecLocal."PMP07 Location Code", UserSetupRec."SME073 Working Location");
+                            end;
+                            //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/30 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
 
                             BinContentRecLocal.Reset();
                             BinContentRecLocal.SetRange("Location Code", CurrLocationCode_g);
@@ -272,97 +364,74 @@ page 50036 "PMP17 Internal Transfer"
 
                     trigger OnDrillDown()
                     var
-                        PackageNoInfoRecLocal: Record "Package No. Information";
-                        BinContentRecLocal: Record "Bin Content";
+                        ItemJnlLineReserve: Codeunit "Item Jnl. Line-Reserve";
+                        ItemTrackingDataCollection: Codeunit "Item Tracking Data Collection";
+                        Math: Codeunit "Math";
+                        TempTrackingSpecification: Record "Tracking Specification" temporary;
+                        tempItemJnlLine: Record "Item Journal Line" temporary;
+                        ItemTrackingCode: Record "Item Tracking Code";
+                        ItemRec: Record Item;
+
+                        TempGlobalEntrySummary: Record "Entry Summary" temporary;
+
+                    // PackageNoInfoRecLocal: Record "Package No. Information";
+                    // BinContentRecLocal: Record "Bin Content";
                     begin
-                        PackageNoInfoRecLocal.Reset();
-                        Clear(BaleNoCode_g);
+                        BuildTempItemJournalForEntrySummary(tempItemJnlLine);
+                        TempGlobalEntrySummary.Init();
+                        TempGlobalEntrySummary := TobaccoBalesWhseTFMgmt.OpenItemTrackingSummaryFormfromItemJnlLine(tempItemJnlLine);
+                        TempGlobalEntrySummary.Insert();
 
-                        PackageNoInfoRecLocal.SetRange(Blocked, false);
-                        PackageNoInfoRecLocal.SetRange("Item No.", ItemNoCode_g);
-                        PackageNoInfoRecLocal.SetRange("Variant Code", VariantCode_g);
-                        PackageNoInfoRecLocal.SetRange("Location Filter", CurrLocationCode_g);
-                        if LotNoCode_g <> '' then begin
-                            PackageNoInfoRecLocal.SetRange("PMP04 Lot No.", LotNoCode_g);
-                        end;
-                        PackageNoInfoRecLocal.SetAutoCalcFields(Inventory, "PMP04 Bin Code");
-                        PackageNoInfoRecLocal.SetFilter("PMP04 Bin Code", '<> %1', TransferToBinCode_g);
-                        PackageNoInfoRecLocal.SetFilter(Inventory, '> 0');
-                        if Page.RunModal(Page::"Package No. Information List", PackageNoInfoRecLocal) = Action::LookupOK then begin
-                            PackageNoInfoRecLocal.CalcFields(Inventory);
-                            BaleNoCode_g := PackageNoInfoRecLocal."Package No.";
+                        if (TempGlobalEntrySummary."Lot No." = '') AND (TempGlobalEntrySummary."Package No." = '') then exit;
 
-                            BinContentRecLocal.Reset();
-                            BinContentRecLocal.SetRange("Location Code", CurrLocationCode_g);
-                            BinContentRecLocal.SetRange("Item No.", ItemNoCode_g);
-                            BinContentRecLocal.SetRange("Variant Code", VariantCode_g);
-                            BinContentRecLocal.SetRange("Unit of Measure Code", UnitofMeasureCode_g);
-                            BinContentRecLocal.SetRange("Lot No. Filter", LotNoCode_g);
-                            BinContentRecLocal.SetRange("Package No. Filter", BaleNoCode_g);
-                            BinContentRecLocal.SetAutoCalcFields(Quantity, "Quantity (Base)");
-                            BinContentRecLocal.SetFilter(Quantity, '> 0');
-                            if BinContentRecLocal.Count = 1 then begin
-                                BinContentRecLocal.FindFirst();
-                                BinContentRecLocal.CalcFields(Quantity, "Quantity (Base)");
-                                FromBinCode_g := BinContentRecLocal."Bin Code";
-                                InventoryQty_g := BinContentRecLocal.Quantity;
-                            end else
-                                Clear(FromBinCode_g);
-                        end;
+                        LotNoCode_g := TempGlobalEntrySummary."Lot No.";
+                        BaleNoCode_g := TempGlobalEntrySummary."Package No.";
+                        InventoryQty_g := TempGlobalEntrySummary."Total Quantity";
+
+                        // PackageNoInfoRecLocal.Reset();
+                        // Clear(BaleNoCode_g);
+
+                        // PackageNoInfoRecLocal.SetRange(Blocked, false);
+                        // PackageNoInfoRecLocal.SetRange("Item No.", ItemNoCode_g);
+                        // PackageNoInfoRecLocal.SetRange("Variant Code", VariantCode_g);
+                        // PackageNoInfoRecLocal.SetRange("Location Filter", CurrLocationCode_g);
+                        // if LotNoCode_g <> '' then begin
+                        //     PackageNoInfoRecLocal.SetRange("PMP04 Lot No.", LotNoCode_g);
+                        // end;
+                        // PackageNoInfoRecLocal.SetAutoCalcFields(Inventory, "PMP04 Bin Code");
+                        // PackageNoInfoRecLocal.SetFilter("PMP04 Bin Code", '<> %1', TransferToBinCode_g);
+                        // PackageNoInfoRecLocal.SetFilter(Inventory, '> 0');
+                        // if Page.RunModal(Page::"Package No. Information List", PackageNoInfoRecLocal) = Action::LookupOK then begin
+                        //     //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/30 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                        //     PackageNoInfoRecLocal.CalcFields(Inventory, "PMP07 Location Code", "PMP04 Bin Code", "PMP04 Lot No.");
+                        //     // Check if the current Location Code matches the user's Working Location. If not, throw an error showing the item's current location.
+                        //     if PackageNoInfoRecLocal."PMP07 Location Code" <> UserSetupRec."SME073 Working Location" then begin
+                        //         Error('You cannot process %1 %2 because it is currently located in %3. Your assigned working location is %4.', PackageNoInfoRecLocal.TableCaption(), PackageNoInfoRecLocal."Package No.", PackageNoInfoRecLocal."PMP07 Location Code", UserSetupRec."SME073 Working Location");
+                        //     end;
+                        //     //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/30 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
+
+                        //     BaleNoCode_g := PackageNoInfoRecLocal."Package No.";
+
+                        //     BinContentRecLocal.Reset();
+                        //     BinContentRecLocal.SetRange("Location Code", CurrLocationCode_g);
+                        //     BinContentRecLocal.SetRange("Item No.", ItemNoCode_g);
+                        //     BinContentRecLocal.SetRange("Variant Code", VariantCode_g);
+                        //     BinContentRecLocal.SetRange("Unit of Measure Code", UnitofMeasureCode_g);
+                        //     BinContentRecLocal.SetRange("Lot No. Filter", LotNoCode_g);
+                        //     BinContentRecLocal.SetRange("Package No. Filter", BaleNoCode_g);
+                        //     BinContentRecLocal.SetAutoCalcFields(Quantity, "Quantity (Base)");
+                        //     BinContentRecLocal.SetFilter(Quantity, '> 0');
+                        //     if BinContentRecLocal.Count = 1 then begin
+                        //         BinContentRecLocal.FindFirst();
+                        //         BinContentRecLocal.CalcFields(Quantity, "Quantity (Base)");
+                        //         FromBinCode_g := BinContentRecLocal."Bin Code";
+                        //         InventoryQty_g := BinContentRecLocal.Quantity;
+                        //     end else
+                        //         Clear(FromBinCode_g);
+                        // end;
                     end;
                 }
-                field(FromBinCode_g; FromBinCode_g)
-                {
-                    ApplicationArea = All;
-                    Caption = 'From Bin Code';
-                    ToolTip = 'Specifies the value of the From Bin Code field';
-                    trigger OnValidate()
-                    var
-                        BinContentRecLocal: Record "Bin Content";
-                    begin
-                        BinContentRecLocal.Reset();
-                        BinContentRecLocal.SetRange("Location Code", CurrLocationCode_g);
-                        BinContentRecLocal.SetRange("Bin Code", FromBinCode_g);
-                        BinContentRecLocal.SetRange("Item No.", ItemNoCode_g);
-                        BinContentRecLocal.SetRange("Variant Code", VariantCode_g);
-                        BinContentRecLocal.SetRange("Unit of Measure Code", UnitofMeasureCode_g);
-                        BinContentRecLocal.SetRange("Lot No. Filter", LotNoCode_g);
-                        BinContentRecLocal.SetRange("Package No. Filter", BaleNoCode_g);
-                        BinContentRecLocal.SetAutoCalcFields(Quantity, "Quantity (Base)");
-                        BinContentRecLocal.SetFilter(Quantity, '> 0');
-                        if BinContentRecLocal.FindFirst() then begin
-                            BinContentRecLocal.CalcFields(Quantity, "Quantity (Base)");
-                            FromBinCode_g := BinContentRecLocal."Bin Code";
-                            InventoryQty_g := BinContentRecLocal.Quantity;
-                        end else
-                            Error('No available quantity found for the selected Item in Bin %1, with the specified criteria of Item %2, Variant %3, Lot %4, Package %5 at Location of %6', FromBinCode_g, ItemNoCode_g, VariantCode_g, LotNoCode_g, BaleNoCode_g, CurrLocationCode_g);
-                    end;
-
-                    trigger OnDrillDown()
-                    var
-                        BinContentRecLocal: Record "Bin Content";
-                    begin
-                        BinContentRecLocal.Reset();
-                        Clear(BinContentRecLocal);
-
-                        BinContentRecLocal.SetRange("Location Code", CurrLocationCode_g);
-                        BinContentRecLocal.SetRange("Item No.", ItemNoCode_g);
-                        BinContentRecLocal.SetRange("Variant Code", VariantCode_g);
-                        BinContentRecLocal.SetRange("Unit of Measure Code", UnitofMeasureCode_g);
-                        BinContentRecLocal.SetRange("Lot No. Filter", LotNoCode_g);
-                        BinContentRecLocal.SetRange("Package No. Filter", BaleNoCode_g);
-                        BinContentRecLocal.SetAutoCalcFields(Quantity, "Quantity (Base)");
-                        BinContentRecLocal.SetFilter(Quantity, '> 0');
-                        if BinContentRecLocal.FindFirst() then begin
-                            if Page.RunModal(Page::"Bin Content", BinContentRecLocal) = Action::LookupOK then begin
-                                BinContentRecLocal.CalcFields(Quantity, "Quantity (Base)");
-                                FromBinCode_g := BinContentRecLocal."Bin Code";
-                                InventoryQty_g := BinContentRecLocal.Quantity;
-                            end
-                        end else
-                            Error('No available quantity found for the selected Item with the specified criteria of Item %1, Variant %2, Lot %3, Package %4 at Location of %5', ItemNoCode_g, VariantCode_g, LotNoCode_g, BaleNoCode_g, CurrLocationCode_g);
-                    end;
-                }
+                //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/10/12 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
                 field(InventoryQty_g; InventoryQty_g)
                 {
                     ApplicationArea = All;
@@ -637,7 +706,9 @@ page 50036 "PMP17 Internal Transfer"
                 trigger OnAction()
                 var
                     PkgNoInfoRec: Record "Package No. Information";
+                    LotNoInfoRec: Record "Lot No. Information";
                 begin
+                    // if ItemTrackingCodeRec."Package Specific Tracking" then begin
                     PkgNoInfoRec.Reset();
                     PkgNoInfoRec.SetRange("Item No.", ItemNoCode_g);
                     PkgNoInfoRec.SetRange("Variant Code", VariantCode_g);
@@ -650,6 +721,23 @@ page 50036 "PMP17 Internal Transfer"
                     end else begin
                         AddRecordNONPKG__List(Rec);
                     end;
+                    // end
+                    // else begin
+                    //     if ItemTrackingCodeRec."Lot Specific Tracking" then begin
+                    //         LotNoInfoRec.Reset();
+                    //         LotNoInfoRec.SetRange("Item No.", ItemNoCode_g);
+                    //         LotNoInfoRec.SetRange("Variant Code", VariantCode_g);
+                    //         LotNoInfoRec.SetRange("Lot No.", LotNoCode_g);
+                    //         LotNoInfoRec.SetRange(Blocked, false);
+                    //         LotNoInfoRec.CalcFields(Inventory);
+                    //         LotNoInfoRec.SetFilter(Inventory, '> 0');
+                    //         if LotNoInfoRec.FindFirst() then begin
+                    //             AddRecordLotNo__List(Rec, LotNoInfoRec);
+                    //         end else begin
+                    //             AddRecordNONPKG__List(Rec);
+                    //         end;
+                    //     end;
+                    // end;
 
                     ResetAllInternalTransferControl();
                 end;
@@ -765,13 +853,14 @@ page 50036 "PMP17 Internal Transfer"
         PMPAppLogicMgmt: Codeunit "PMP02 App Logic Management";
         WeighingScaleMgmt: Codeunit "PMP19 Weighing Scale Mgt.";
         ExtCompanySetup: Record "PMP07 Extended Company Setup";
+        ItemTrackingCodeRec: Record "Item Tracking Code";
         InventoryQty_g: Decimal;
         MaxNavigatePage_g, CurrentStep_g : Integer;
         PostingDate: Date;
         TobaccoBalesTF_TextCaption: Text;
         ItemNoCode_g, VariantCode_g, ItemDescription_g, LotNoCode_g, BaleNoCode_g, UnitofMeasureCode_g : Text;
         // BaleNoCode_g, LotNoCode_g : Code[50];
-        TransferToBinCode_g, FromBinCode_g, CurrLocationCode_g : Code[20]; // ItemNoCode_g
+        TransferToBinCode_g, FromBinCode_g, CurrLocationCode_g : Code[20]; // ItemNoCode_g 
                                                                            // VariantCode_g, UnitofMeasureCode_g : Code[10];
     #endregion GLOBAL VARIABLE
 
@@ -802,6 +891,7 @@ page 50036 "PMP17 Internal Transfer"
     local procedure ResetAllInternalTransferControl()
     begin
         ItemJnlLine.Reset();
+        ItemTrackingCodeRec.Reset();
         Clear(ItemNoCode_g);
         Clear(ItemDescription_g);
         Clear(VariantCode_g);
@@ -1029,12 +1119,18 @@ page 50036 "PMP17 Internal Transfer"
 
         BinContentRec.Reset();
         BinContentRec.SetRange("Item No.", ItemNoCode_g);
-        BinContentRec.SetRange("Variant Code", VariantCode_g);
-        BinContentRec.SetRange("Package No. Filter", BaleNoCode_g);
-        BinContentRec.SetRange("Lot No. Filter", LotNoCode_g);
-        BinContentRec.SetRange("Location Code", CurrLocationCode_g);
-        BinContentRec.SetRange("Bin Code", FromBinCode_g);
-        BinContentRec.SetRange("Unit of Measure Code", UnitofMeasureCode_g);
+        if VariantCode_g <> '' then
+            BinContentRec.SetRange("Variant Code", VariantCode_g);
+        if BaleNoCode_g <> '' then
+            BinContentRec.SetRange("Package No. Filter", BaleNoCode_g);
+        if LotNoCode_g <> '' then
+            BinContentRec.SetRange("Lot No. Filter", LotNoCode_g);
+        if CurrLocationCode_g <> '' then
+            BinContentRec.SetRange("Location Code", CurrLocationCode_g);
+        if FromBinCode_g <> '' then
+            BinContentRec.SetRange("Bin Code", FromBinCode_g);
+        if UnitofMeasureCode_g <> '' then
+            BinContentRec.SetRange("Unit of Measure Code", UnitofMeasureCode_g);
         BinContentRec.CalcFields(Quantity, "Quantity (Base)");
         BinContentRec.SetFilter("Quantity (Base)", '>0');
         if BinContentRec.FindFirst() then begin
@@ -1062,6 +1158,7 @@ page 50036 "PMP17 Internal Transfer"
             Rec."Variant Code" := BinContentRec."Variant Code";
             // Sub merk 1-5 tidak ada di dalam Bin Content
             Rec."Lot No." := LotNoCode_g;
+            Rec.CalcFields("Description");
             Rec."Curr. Location Code" := CurrLocationCode_g;
             Rec."Curr. Bin Code" := FromBinCode_g;
             Rec."Dest. Bin Code" := TransferToBinCode_g;
@@ -1074,6 +1171,54 @@ page 50036 "PMP17 Internal Transfer"
         end;
 
     end;
+
+    //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/10/12 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+    local procedure BuildTempItemJournalForEntrySummary(var tempItemJnlLine: Record "Item Journal Line" temporary)
+    var
+        IJL: Record "Item Journal Line";
+        ItemRec: Record Item;
+        ItemJnlTemplateRec: Record "Item Journal Template";
+        ItemJnlBatchRec: Record "Item Journal Batch";
+    begin
+        tempItemJnlLine.Reset();
+        tempItemJnlLine.DeleteAll();
+        IJL.Reset();
+        ItemRec.Reset();
+        ItemJnlTemplateRec.Reset();
+        ItemJnlBatchRec.Reset();
+
+        ExtCompanySetup.Get();
+        tempItemJnlLine.Init();
+        ItemJnlTemplateRec.Get(ExtCompanySetup."PMP17 Gen. Int. Tf. Jnl. Tmpt");
+        ItemJnlBatchRec.Get(ExtCompanySetup."PMP17 Gen. Int. Tf. Jnl. Tmpt", ExtCompanySetup."PMP17 Gen. Int. Tf. Jnl. Batch");
+        tempItemJnlLine."Journal Template Name" := ExtCompanySetup."PMP17 Gen. Int. Tf. Jnl. Tmpt";
+        tempItemJnlLine."Journal Batch Name" := ExtCompanySetup."PMP17 Gen. Int. Tf. Jnl. Batch";
+        tempItemJnlLine."Line No." := 1;
+
+        if ItemJnlTemplateRec.Get(tempItemJnlLine."Journal Template Name") then begin
+            tempItemJnlLine."Source Code" := ItemJnlTemplateRec."Source Code";
+        end;
+        tempItemJnlLine."Source Type" := tempItemJnlLine."Source Type"::Item;
+
+        if ItemJnlBatchRec.Get(tempItemJnlLine."Journal Template Name", tempItemJnlLine."Journal Batch Name") then begin
+            if ItemJnlBatchRec."No. Series" <> '' then begin
+                tempItemJnlLine."Document No." := StrSubstNo('TESTIJL-%1', tempItemJnlLine."Line No.");
+            end;
+        end;
+
+        tempItemJnlLine.Validate("Posting Date", PostingDate);
+        tempItemJnlLine.Validate("Entry Type", tempItemJnlLine."Entry Type"::Consumption);
+        tempItemJnlLine.Validate("Order Type", tempItemJnlLine."Order Type"::Production);
+        tempItemJnlLine.Validate("Item No.", ItemNoCode_g);
+        tempItemJnlLine.Validate("Variant Code", VariantCode_g);
+        tempItemJnlLine.Validate(Quantity, InventoryQty_g);
+        tempItemJnlLine.Validate("Unit of Measure Code", UnitofMeasureCode_g);
+        tempItemJnlLine.Validate("Location Code", CurrLocationCode_g);
+        tempItemJnlLine."Bin Code" := FromBinCode_g;
+        tempItemJnlLine.Insert();
+    end;
+    //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/10/12 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
+
     #endregion HELPER
 
 }

@@ -180,9 +180,9 @@ page 60416 "PMP17 Tobacco Box Transfer"
 
                         PackageNoInfoRec.Reset();
                         PkgNoInfoRec.Reset();
+                        PkgNoInfoRec.SetRange("Package No.", BaleNoCode);
                         PkgNoInfoRec.SetRange("Location Filter", UserSetupRec."SME073 Working Location");
                         PkgNoInfoRec.SetAutoCalcFields(Inventory, "PMP04 Bin Code", "PMP04 Lot No.");
-                        PkgNoInfoRec.SetRange("Package No.", BaleNoCode);
                         PkgNoInfoRec.SetFilter(Inventory, '>0');
                         if PkgNoInfoRec.FindFirst() then begin
                             //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/04 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
@@ -577,6 +577,7 @@ page 60416 "PMP17 Tobacco Box Transfer"
                         until Rec.Next() = 0;
 
                     ClearBaleNoCode();
+                    Clear(WeighingQuantity);
                     Message('The Reclassification Journal is successfully posted.');
                     NotifyUserSuccessPosting();
                 end;

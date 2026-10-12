@@ -163,6 +163,14 @@ page 60426 "PMP17 Tobacco Regrading"
                             PkgNoInfoRec.SetFilter("Package No.", BaleNoText);
                             if PkgNoInfoRec.FindSet() then
                                 repeat
+                                    //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/30 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                                    PkgNoInfoRec.CalcFields(Inventory, "PMP07 Location Code", "PMP04 Bin Code", "PMP04 Lot No.");
+                                    // Check if the current Location Code matches the user's Working Location. If not, throw an error showing the item's current location.
+                                    if PkgNoInfoRec."PMP07 Location Code" <> UserSetupRec."SME073 Working Location" then begin
+                                        Error('You cannot process %1 %2 because it is currently located in %3. Your assigned working location is %4.', PkgNoInfoRec.TableCaption(), PkgNoInfoRec."Package No.", PkgNoInfoRec."PMP07 Location Code", UserSetupRec."SME073 Working Location");
+                                    end;
+                                    //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/30 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
+
                                     BaleNoText := PkgNoInfoRec."Package No.";
                                     BaleNoCode := PkgNoInfoRec."Package No.";
                                     AddRecordPkgNo__List(Rec, PkgNoInfoRec);
@@ -171,26 +179,6 @@ page 60426 "PMP17 Tobacco Regrading"
                                 until PkgNoInfoRec.Next() = 0;
                         end;
                     end;
-                    #region REMOVED ONLOOKUP V1
-                    // trigger OnLookup(var Text: Text): Boolean
-                    // var
-                    //     PkgNoInfoRec: Record "Package No. Information";
-                    // begin
-                    //     PkgNoInfoRec.Reset();
-                    //     PkgNoInfoRec.SetAutoCalcFields(Inventory);
-                    //     PkgNoInfoRec.SetRange("Item No.", ItemNoCode);
-                    //     PkgNoInfoRec.SetFilter(Inventory, '> 0');
-                    //     PkgNoInfoRec.SetRange("Location Filter", UserSetupRec."SME073 Working Location");
-                    //     if Page.RunModal(Page::"Package No. Information List", PkgNoInfoRec) = Action::LookupOK then begin
-                    //         BaleNoText := PkgNoInfoRec."Package No.";
-                    //         BaleNoCode := PkgNoInfoRec."Package No.";
-                    //         PackageNoInfoRec := PkgNoInfoRec;
-                    //         // Add the Package No Info to the Tobacco Bales Resequence Listpart
-                    //         AddSummaryBaleListPartofPackageNoInfo(PkgNoInfoRec);
-                    //         CurrPage.PkgNo__List.Page.InsertRecord(PackageNoInfoRec, UserSetupRec."SME073 Working Location", PackageNoInfoRec."PMP04 Bin Code");
-                    //     end;
-                    // end;                    
-                    #endregion REMOVED ONLOOKUP V1
 
                     trigger OnValidate()
                     var
@@ -220,6 +208,14 @@ page 60426 "PMP17 Tobacco Regrading"
                         PkgNoInfoRec.SetRange("Package No.", BaleNoCode);
                         PkgNoInfoRec.SetFilter(Inventory, '> 0');
                         if PkgNoInfoRec.FindFirst() then begin
+                            //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/30 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
+                            PkgNoInfoRec.CalcFields(Inventory, "PMP07 Location Code", "PMP04 Bin Code", "PMP04 Lot No.");
+                            // Check if the current Location Code matches the user's Working Location. If not, throw an error showing the item's current location.
+                            if PkgNoInfoRec."PMP07 Location Code" <> UserSetupRec."SME073 Working Location" then begin
+                                Error('You cannot process %1 %2 because it is currently located in %3. Your assigned working location is %4.', PkgNoInfoRec.TableCaption(), PkgNoInfoRec."Package No.", PkgNoInfoRec."PMP07 Location Code", UserSetupRec."SME073 Working Location");
+                            end;
+                            //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - SW - 2026/09/30 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
+
                             BaleNoText := PkgNoInfoRec."Package No.";
                             BaleNoCode := PkgNoInfoRec."Package No.";
                             PackageNoInfoRec := PkgNoInfoRec;
