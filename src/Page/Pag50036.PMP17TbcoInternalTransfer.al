@@ -637,18 +637,35 @@ page 50036 "PMP17 Internal Transfer"
                 Enabled = CurrentStep_g = 1;
                 Visible = CurrentStep_g = 1;
                 InFooterBar = true;
+                Image = PersonInCharge;
                 trigger OnAction()
+                var
+                    ChangeLoc: Page "SME073 Change Location";
                 begin
-                    ChangeLocationCodeRep.SetUserID(UserSetupRec."User ID");
-                    if UserSetupRec."SME073 Working Location" <> '' then begin
-                        ChangeLocationCodeRep.SetLocationCode(UserSetupRec."SME073 Working Location");
-                    end;
-                    ChangeLocationCodeRep.Run();
+                    Clear(ChangeLoc);
+                    ChangeLoc.SetParameters(CurrLocationCode_g);
+                    if ACTION::OK = ChangeLoc.RunModal() then begin
+                        ChangeLoc.GetParameters(CurrLocationCode_g);
 
-                    UserSetupRec.Get(UserId);
-                    CurrLocationCode_g := UserSetupRec."SME073 Working Location";
-                    Clear(TransferToBinCode_g);
+                        UserSetupRec.Get(UserId);
+                        UserSetupRec."SME073 Working Location" := CurrLocationCode_g;
+                        UserSetupRec.Modify();
+                        CurrLocationCode_g := UserSetupRec."SME073 Working Location";
+                        Clear(TransferToBinCode_g);
+                    end;
                 end;
+                // trigger OnAction()
+                // begin
+                //     ChangeLocationCodeRep.SetUserID(UserSetupRec."User ID");
+                //     if UserSetupRec."SME073 Working Location" <> '' then begin
+                //         ChangeLocationCodeRep.SetLocationCode(UserSetupRec."SME073 Working Location");
+                //     end;
+                //     ChangeLocationCodeRep.Run();
+
+                //     UserSetupRec.Get(UserId);
+                //     CurrLocationCode_g := UserSetupRec."SME073 Working Location";
+                //     Clear(TransferToBinCode_g);
+                // end;
             }
             #endregion CURRENT STEP 1
             #region CURRENT STEP 2
@@ -842,7 +859,7 @@ page 50036 "PMP17 Internal Transfer"
 
     #region GLOBAL VARIABLE
     var
-        ChangeLocationCodeRep: Report "PMP17 Change Working Loc. Code";
+        // ChangeLocationCodeRep: Report "PMP17 Change Working Loc. Code";
         TobaccoBalesWhseTFMgmt: Codeunit "PMP17 Tobacco Bales Whse. Tf.";
         UserSetupRec: Record "User Setup";
         PackageNoInfoRec: Record "Package No. Information";
@@ -862,6 +879,7 @@ page 50036 "PMP17 Internal Transfer"
         // BaleNoCode_g, LotNoCode_g : Code[50];
         TransferToBinCode_g, FromBinCode_g, CurrLocationCode_g : Code[20]; // ItemNoCode_g 
                                                                            // VariantCode_g, UnitofMeasureCode_g : Code[10];
+
     #endregion GLOBAL VARIABLE
 
     #region GETTER

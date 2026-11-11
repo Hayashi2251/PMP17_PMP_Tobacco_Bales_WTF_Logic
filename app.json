@@ -2,7 +2,7 @@
   "id": "7557767a-a051-4a25-9fb7-d8a1c338d21c",
   "name": "PMP Tobacco Bales Whse TF (Logic)",
   "publisher": "PT SME Solution",
-  "version": "1.0.2700.28",
+  "version": "1.0.2700.30",
   "brief": "",
   "description": "",
   "privacyStatement": "",
@@ -52,6 +52,12 @@
       "name": "SMES ID Localization (Logic)",
       "publisher": "PT SME Solution",
       "version": "1.0.2603.0"
+    },
+    {
+      "id": "04b73748-852f-4197-b25b-2e7f5ca096cc",
+      "name": "SMES Palletizing",
+      "publisher": "PT SME Solution",
+      "version": "1.0.2700.42"
     }
   ],
   "screenshots": [],

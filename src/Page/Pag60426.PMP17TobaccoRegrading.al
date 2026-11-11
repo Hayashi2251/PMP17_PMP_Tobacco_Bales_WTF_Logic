@@ -415,19 +415,33 @@ page 60426 "PMP17 Tobacco Regrading"
                 Enabled = CurrentStep = 1;
                 Visible = CurrentStep = 1;
                 InFooterBar = true;
-                Image = PreviousRecord;
+                Image = PersonInCharge;
                 trigger OnAction()
+                var
+                    ChangeLoc: Page "SME073 Change Location";
                 begin
-                    ChangeLocationCodeRep.SetUserID(UserSetupRec."User ID");
-                    if UserSetupRec."SME073 Working Location" <> '' then begin
-                        ChangeLocationCodeRep.SetLocationCode(UserSetupRec."SME073 Working Location");
+                    Clear(ChangeLoc);
+                    ChangeLoc.SetParameters(UserSetupRec."SME073 Working Location");
+                    if ACTION::OK = ChangeLoc.RunModal() then begin
+                        ChangeLoc.GetParameters(UserSetupRec."SME073 Working Location");
+                        UserSetupRec.Modify();
+                        UserSetupRec.Get(UserId);
+                        Rec.DeleteAll();
+                        ResetControls();
                     end;
-                    ChangeLocationCodeRep.Run();
-
-                    UserSetupRec.Get(UserId);
-                    Rec.DeleteAll();
-                    ResetControls();
                 end;
+                // trigger OnAction()
+                // begin
+                //     ChangeLocationCodeRep.SetUserID(UserSetupRec."User ID");
+                //     if UserSetupRec."SME073 Working Location" <> '' then begin
+                //         ChangeLocationCodeRep.SetLocationCode(UserSetupRec."SME073 Working Location");
+                //     end;
+                //     ChangeLocationCodeRep.Run();
+
+                //     UserSetupRec.Get(UserId);
+                //     Rec.DeleteAll();
+                //     ResetControls();
+                // end;
             }
             action(Rescan)
             {
@@ -519,7 +533,7 @@ page 60426 "PMP17 Tobacco Regrading"
     end;
 
     var
-        ChangeLocationCodeRep: Report "PMP17 Change Working Loc. Code";
+        // ChangeLocationCodeRep: Report "PMP17 Change Working Loc. Code";
         TobaccoBalesWhseTFMgmt: Codeunit "PMP17 Tobacco Bales Whse. Tf.";
         UserSetupRec: Record "User Setup";
         PackageNoInfoRec: Record "Package No. Information";
@@ -534,6 +548,7 @@ page 60426 "PMP17 Tobacco Regrading"
         NewTobaccoStandardCode: Code[10];
         BaleNoCode: Code[50];
         BaseUoMCode: Code[10];
+
         TobaccoBalesTF_TextCaption: Text;
         MaxNavigatePage, NewBalePosition, TotalBalesPositionInt : Integer;
         TotalBalesQtyDec: Decimal;

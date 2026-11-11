@@ -222,18 +222,30 @@ page 50040 "PMP17 Tobacco Bales Transfer"
                 Enabled = CurrentStep = 1;
                 Visible = CurrentStep = 1;
                 InFooterBar = true;
-                Image = PreviousRecord;
+                Image = PersonInCharge;
                 trigger OnAction()
+                var
+                    ChangeLoc: Page "SME073 Change Location";
                 begin
-                    ChangeLocationCodeRep.SetUserID(UserSetupRec."User ID");
-                    if UserSetupRec."SME073 Working Location" <> '' then begin
-                        ChangeLocationCodeRep.SetLocationCode(UserSetupRec."SME073 Working Location");
+                    Clear(ChangeLoc);
+                    ChangeLoc.SetParameters(UserSetupRec."SME073 Working Location");
+                    if ACTION::OK = ChangeLoc.RunModal() then begin
+                        ChangeLoc.GetParameters(UserSetupRec."SME073 Working Location");
+                        UserSetupRec.Modify();
+                        Clear(TransferToBinCode);
                     end;
-                    ChangeLocationCodeRep.Run();
-
-                    UserSetupRec.Get(UserId);
-                    Clear(TransferToBinCode);
                 end;
+                // trigger OnAction()
+                // begin
+                //     ChangeLocationCodeRep.SetUserID(UserSetupRec."User ID");
+                //     if UserSetupRec."SME073 Working Location" <> '' then begin
+                //         ChangeLocationCodeRep.SetLocationCode(UserSetupRec."SME073 Working Location");
+                //     end;
+                //     ChangeLocationCodeRep.Run();
+
+                //     UserSetupRec.Get(UserId);
+                //     Clear(TransferToBinCode);
+                // end;
             }
             action(Cancel)
             {
@@ -273,7 +285,7 @@ page 50040 "PMP17 Tobacco Bales Transfer"
     end;
 
     var
-        ChangeLocationCodeRep: Report "PMP17 Change Working Loc. Code";
+        // ChangeLocationCodeRep: Report "PMP17 Change Working Loc. Code";
         TobaccoBalesWhseTFMgmt: Codeunit "PMP17 Tobacco Bales Whse. Tf.";
         Bin: Record Bin;
         UserSetupRec: Record "User Setup";

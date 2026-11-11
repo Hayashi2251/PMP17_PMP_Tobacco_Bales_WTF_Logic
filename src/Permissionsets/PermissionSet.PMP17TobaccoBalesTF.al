@@ -6,7 +6,7 @@ permissionset 60403 PMP17TobaccoBalesTF
     // page "PMP17 Tbco. Bales Reseq. Sub."=X,
         page "PMP17 Tobacco Regrading"=X,
         page "PMP17 Tobacco Bale Resequence"=X,
-        report "PMP17 Change Working Loc. Code"=X,
+    // report "PMP17 Change Working Loc. Code"=X,
         codeunit "PMP17 Tobacco Bales Whse. Tf."=X,
         page "PMP17 Internal Transfer"=X,
         page "PMP17 Tobacco Bales Transfer"=X;

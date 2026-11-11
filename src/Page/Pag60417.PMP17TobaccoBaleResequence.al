@@ -418,18 +418,30 @@ page 60417 "PMP17 Tobacco Bale Resequence"
                 Enabled = CurrentStep = 1;
                 Visible = CurrentStep = 1;
                 InFooterBar = true;
-                Image = PreviousRecord;
+                Image = PersonInCharge;
                 trigger OnAction()
+                var
+                    ChangeLoc: Page "SME073 Change Location";
                 begin
-                    ChangeLocationCodeRep.SetUserID(UserSetupRec."User ID");
-                    if UserSetupRec."SME073 Working Location" <> '' then begin
-                        ChangeLocationCodeRep.SetLocationCode(UserSetupRec."SME073 Working Location");
+                    Clear(ChangeLoc);
+                    ChangeLoc.SetParameters(UserSetupRec."SME073 Working Location");
+                    if ACTION::OK = ChangeLoc.RunModal() then begin
+                        ChangeLoc.GetParameters(UserSetupRec."SME073 Working Location");
+                        UserSetupRec.Modify();
+                        Clear(BinCode);
                     end;
-                    ChangeLocationCodeRep.Run();
-
-                    UserSetupRec.Get(UserId);
-                    Clear(BinCode);
                 end;
+                // trigger OnAction()
+                // begin
+                //     ChangeLocationCodeRep.SetUserID(UserSetupRec."User ID");
+                //     if UserSetupRec."SME073 Working Location" <> '' then begin
+                //         ChangeLocationCodeRep.SetLocationCode(UserSetupRec."SME073 Working Location");
+                //     end;
+                //     ChangeLocationCodeRep.Run();
+
+                //     UserSetupRec.Get(UserId);
+                //     Clear(BinCode);
+                // end;
             }
             action(Rescan)
             {
@@ -529,7 +541,7 @@ page 60417 "PMP17 Tobacco Bale Resequence"
     end;
 
     var
-        ChangeLocationCodeRep: Report "PMP17 Change Working Loc. Code";
+        // ChangeLocationCodeRep: Report "PMP17 Change Working Loc. Code";
         TobaccoBalesWhseTFMgmt: Codeunit "PMP17 Tobacco Bales Whse. Tf.";
         UserSetupRec: Record "User Setup";
         PackageNoInfoRec: Record "Package No. Information";
