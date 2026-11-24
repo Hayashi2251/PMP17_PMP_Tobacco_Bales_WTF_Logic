@@ -471,50 +471,96 @@ page 60417 "PMP17 Tobacco Bale Resequence"
                 Visible = CurrentStep = MaxNavigatePage;
                 InFooterBar = true;
                 Image = Approve;
+
                 trigger OnAction()
                 var
                     IsTheDataValidToDoAPosting: Boolean;
-                    CountLastIRJ: Integer;
                     PkgNoInfoRec: Record "Package No. Information";
+                    ProcessDialog: Dialog;
+                    TotalCount: Integer;
+                    ProcessedCount: Integer;
+                    ProgressPercentage: Decimal;
                 begin
-                    //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/06/17 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
                     Clear(IsTheDataValidToDoAPosting);
-
                     Rec.Reset();
+
+                    // Get total record count
+                    TotalCount := Rec.Count();
+                    if TotalCount = 0 then exit;
+                    ProcessedCount := 0;
+
+                    // Open Progress Dialog
+                    ProcessDialog.Open(
+                        'Resequencing Process...\' +
+                        'Step: #1############################\' +
+                        'Processed: #2########## of #3##########\' +
+                        'Progress: #4#######%\'
+                    );
+
+                    // =====================================================
+                    // STEP 1 - VALIDATING DATA
+                    // =====================================================
+                    ProcessDialog.Update(1, 'Validating data...');
+                    ProcessDialog.Update(2, 0);
+                    ProcessDialog.Update(3, TotalCount);
+                    ProcessDialog.Update(4, 0);
                     if Rec.FindSet() then
                         repeat
-                            if Rec."Curr. Bin Code" <> Rec."Bin Code" then begin
+                            if Rec."Curr. Bin Code" <> Rec."Bin Code" then
                                 IsTheDataValidToDoAPosting := true;
-                            end;
-                        until Rec.Next() = 0;
-                    //{<<<<<<<<<<<<<<<<<<<<<<<<<< PMP17 - SW - 2026/06/17 - FINISH >>>>>>>>>>>>>>>>>>>>>>>>>>}
 
+                            ProcessedCount += 1;
+                            ProgressPercentage := Round(ProcessedCount * 100 / TotalCount, 1);
+                            ProcessDialog.Update(2, ProcessedCount);
+                            ProcessDialog.Update(4, ProgressPercentage);
+                        until Rec.Next() = 0;
+
+                    // =====================================================
+                    // STEP 2 - PROCESSING DATA
+                    // =====================================================
                     if IsTheDataValidToDoAPosting then begin
                         Rec.Reset();
-                        Rec.CalcFields("Description", "Sub Merk 1", "Sub Merk 2", "Sub Merk 3", "Sub Merk 4", "Sub Merk 5", "Old Bale Position");
+                        ProcessedCount := 0;
+                        ProgressPercentage := 0;
+                        ProcessDialog.Update(1, 'Processing package resequencing posting...');
+                        ProcessDialog.Update(2, 0);
+                        ProcessDialog.Update(4, 0);
+
                         if Rec.FindSet() then
                             repeat
+                                // Calculate FlowFields for current record
+                                Rec.CalcFields("Description", "Sub Merk 1", "Sub Merk 2", "Sub Merk 3", "Sub Merk 4", "Sub Merk 5", "Old Bale Position");
                                 PkgNoInfoRec.Reset();
                                 PkgNoInfoRec.SetRange("Item No.", Rec."Item No.");
                                 PkgNoInfoRec.SetRange("Variant Code", Rec."Variant Code");
                                 PkgNoInfoRec.SetRange("Package No.", Rec."Package No.");
                                 if PkgNoInfoRec.FindFirst() then begin
                                     if Rec."Curr. Bin Code" <> Rec."Bin Code" then begin
-                                        PkgNoInfoRec.CalcFields(Inventory);
-                                        PkgNoInfoRec.CalcFields("PMP04 Bin Code");
-                                        PkgNoInfoRec.CalcFields("PMP04 Lot No.");
+                                        PkgNoInfoRec.CalcFields(Inventory, "PMP04 Bin Code", "PMP04 Lot No.");
                                         TobaccoBalesWhseTFMgmt.PostTobaccoBalesTransferItemReclass(ItemJnlLine, PkgNoInfoRec, UserSetupRec, BinCode, PostingDate);
                                     end;
                                     PkgNoInfoRec."PMP07 Bale Position" := Rec."New Bale Position";
                                     PkgNoInfoRec.Modify();
                                 end;
+
+                                // Update progress
+                                ProcessedCount += 1;
+                                ProgressPercentage := Round(ProcessedCount * 100 / TotalCount, 1);
+                                ProcessDialog.Update(2, ProcessedCount);
+                                ProcessDialog.Update(4, ProgressPercentage);
                             until Rec.Next() = 0;
 
+                        // Close Progress Dialog
+                        ProcessDialog.Close();
                         CurrPage.Update(false);
                         ClearNewBalePosition();
                         ClearBaleNoCode();
                         Rec.DeleteAll();
                         Message('Resequencing process is done.');
+                    end else begin
+                        // Close Progress Dialog
+                        ProcessDialog.Close();
+                        Message('No Bin Code changes detected. Resequencing process was not executed.');
                     end;
                 end;
             }

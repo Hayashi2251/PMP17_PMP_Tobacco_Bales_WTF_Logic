@@ -474,12 +474,33 @@ page 60426 "PMP17 Tobacco Regrading"
                 Image = Approve;
                 trigger OnAction()
                 var
-                    CountLastIRJ: Integer;
                     PkgNoInfoRec: Record "Package No. Information";
+                    ProcessDialog: Dialog;
+                    TotalCount: Integer;
+                    ProcessedCount: Integer;
+                    ProgressPercentage: Decimal;
                 begin
                     Rec.Reset();
+
+                    // Get total record count
+                    TotalCount := Rec.Count();
+                    if TotalCount = 0 then exit;
+                    ProcessedCount := 0;
+
+                    // Open Progress Dialog
+                    ProcessDialog.Open(
+                        'Regrading Process...\' +
+                        'Processed: #1########## of #2##########\' +
+                        'Progress: #3#######%\'
+                    );
+                    ProcessDialog.Update(3, TotalCount);
+
                     if Rec.FindSet() then
                         repeat
+                            ProcessedCount := 0;
+                            ProgressPercentage := 0;
+                            ProcessDialog.Update(1, 0);
+                            ProcessDialog.Update(2, 0);
                             PkgNoInfoRec.Reset();
                             Rec.CalcFields("Description", "Sub Merk 1", "Sub Merk 2", "Sub Merk 3", "Sub Merk 4", "Sub Merk 5", "Old Bale Position");
 
@@ -493,8 +514,15 @@ page 60426 "PMP17 Tobacco Regrading"
                                 TobaccoBalesWhseTFMgmt.PostTobaccoBalesRegrading(AssemblyHeaderRec, PkgNoInfoRec, UserSetupRec, ItemNoCode, NewTobaccoStandardCode);
                             end;
 
+                            // Update progress
+                            ProcessedCount += 1;
+                            ProgressPercentage := Round(ProcessedCount * 100 / TotalCount, 1);
+                            ProcessDialog.Update(1, ProcessedCount);
+                            ProcessDialog.Update(3, ProgressPercentage);
                         until Rec.Next() = 0;
 
+                    // Close Progress Dialog
+                    ProcessDialog.Close();
                     CurrPage.Update(false);
                     Clear(TobaccoBalesWhseTFMgmt);
                     AssemblyHeaderRec.Reset();

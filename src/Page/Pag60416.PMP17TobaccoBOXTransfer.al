@@ -563,15 +563,36 @@ page 60416 "PMP17 Tobacco Box Transfer"
                 trigger OnAction()
                 var
                     PkgNoInfoRec: Record "Package No. Information";
+                    ProcessDialog: Dialog;
+                    TotalCount: Integer;
+                    ProcessedCount: Integer;
+                    ProgressPercentage: Decimal;
                 begin
                     Rec.Reset();
                     Rec.SetRange("Bin Code", TransferToBinCode);
                     Rec.SetRange("User ID", UserId());
+
+                    // Get total record count
+                    TotalCount := Rec.Count();
+                    if TotalCount = 0 then exit;
+                    ProcessedCount := 0;
+
+                    // Open Progress Dialog
+                    ProcessDialog.Open(
+                        'Tobacco Box Transfer Process...\' +
+                        'Processed: #1########## of #2##########\' +
+                        'Progress: #3#######%\'
+                    );
+                    ProcessDialog.Update(3, TotalCount);
+
                     if Rec.FindSet() then
                         repeat
-                            if Rec."Curr. Bin Code" = TransferToBinCode then begin
-                                continue;
-                            end;
+                            ProcessedCount := 0;
+                            ProgressPercentage := 0;
+                            ProcessDialog.Update(1, 0);
+                            ProcessDialog.Update(2, 0);
+
+                            if Rec."Curr. Bin Code" = TransferToBinCode then continue;
 
                             if TobaccoBalesWhseTFMgmt.PostTobaccoBalesTransferItemReclass(ItemJnlLine, Rec, UserSetupRec, TransferToBinCode, PostingDate) then begin
                                 PkgNoInfoRec.Reset();
@@ -586,8 +607,16 @@ page 60416 "PMP17 Tobacco Box Transfer"
                                 Commit();
                             end else
                                 NotifyUserFailedPosting();
+
+                            // Update progress
+                            ProcessedCount += 1;
+                            ProgressPercentage := Round(ProcessedCount * 100 / TotalCount, 1);
+                            ProcessDialog.Update(1, ProcessedCount);
+                            ProcessDialog.Update(3, ProgressPercentage);
                         until Rec.Next() = 0;
 
+                    // Close Progress Dialog
+                    ProcessDialog.Close();
                     ClearBaleNoCode();
                     Clear(WeighingQuantity);
                     Message('The Reclassification Journal is successfully posted.');

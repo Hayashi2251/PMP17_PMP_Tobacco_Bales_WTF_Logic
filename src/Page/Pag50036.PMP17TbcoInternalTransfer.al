@@ -770,23 +770,52 @@ page 50036 "PMP17 Internal Transfer"
                 trigger OnAction()
                 var
                     PkgNoInfoRec: Record "Package No. Information";
+                    ProcessDialog: Dialog;
+                    TotalCount: Integer;
+                    ProcessedCount: Integer;
+                    ProgressPercentage: Decimal;
                 begin
                     Rec.Reset();
                     Rec.SetRange("Dest. Bin Code", TransferToBinCode_g);
                     Rec.SetRange("User ID", UserId());
+
+                    // Get total record count
+                    TotalCount := Rec.Count();
+                    if TotalCount = 0 then exit;
+                    ProcessedCount := 0;
+
+                    // Open Progress Dialog
+                    ProcessDialog.Open(
+                        'Internal Transfer Process...\' +
+                        'Processed: #1########## of #2##########\' +
+                        'Progress: #3#######%\'
+                    );
+                    ProcessDialog.Update(3, TotalCount);
+
                     if Rec.FindSet() then begin
                         repeat
-                            if Rec."Curr. Bin Code" = TransferToBinCode_g then begin
-                                continue;
-                            end;
+                            ProcessedCount := 0;
+                            ProgressPercentage := 0;
+                            ProcessDialog.Update(1, 0);
+                            ProcessDialog.Update(2, 0);
+
+                            if Rec."Curr. Bin Code" = TransferToBinCode_g then continue;
 
                             if TobaccoBalesWhseTFMgmt.PostInternalTransferItemReclass(ItemJnlLine, Rec, UserSetupRec, TransferToBinCode_g, PostingDate) then begin
                                 Rec.Delete();
                                 Commit();
                             end else
                                 NotifyUserFailedPosting();
+
+                            // Update progress
+                            ProcessedCount += 1;
+                            ProgressPercentage := Round(ProcessedCount * 100 / TotalCount, 1);
+                            ProcessDialog.Update(1, ProcessedCount);
+                            ProcessDialog.Update(3, ProgressPercentage);
                         until Rec.Next() = 0;
 
+                        // Close Progress Dialog
+                        ProcessDialog.Close();
                         ResetAllInternalTransferControl();
                         //{<<<<<<<<<<<<<<<<<<<<<<<<<< DMJ17 - KP - 2026/08/20 - START >>>>>>>>>>>>>>>>>>>>>>>>>>}
                         // Message('The Reclassification Journal is successfully posted.');
